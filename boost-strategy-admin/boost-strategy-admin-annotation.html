@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>内容提权策略运营后台 v2.0 - UI 需求标注文档</title>
+<style>
+:root { --accent: #1677ff; --danger: #ff4d4f; --border: #d9d9d9; --bg: #f0f2f5; --box-bg: #fffbe6; --box-border: #ffe58f; }
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif; background: var(--bg); color: #333; }
+
+/* Top bar */
+.topbar { position:fixed; top:0; left:0; right:0; height:48px; background:#fff; border-bottom:1px solid #e8e8e8; display:flex; align-items:center; padding:0 16px; z-index:9999; box-shadow:0 1px 4px rgba(0,0,0,.06); }
+.topbar h1 { font-size:14px; font-weight:700; color:#222; margin-right:16px; white-space:nowrap; }
+.tab-bar { display:flex; gap:4px; overflow-x:auto; flex:1; }
+.tab-btn { padding:5px 12px; border:1px solid var(--border); border-radius:6px; background:#fff; cursor:pointer; font-size:12px; white-space:nowrap; transition:all .15s; color:#555; }
+.tab-btn:hover { border-color:var(--accent); color:var(--accent); }
+.tab-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+.help-text { font-size:11px; color:#999; margin-left:12px; white-space:nowrap; }
+
+/* Canvas */
+.canvas { position:relative; margin-top:48px; width:1800px; min-height:1200px; padding:20px; }
+
+/* iframe */
+.ui-frame-wrap { position:absolute; left:340px; top:20px; width:980px; height:720px; border:2px solid #d0d0d0; border-radius:8px; overflow:hidden; background:#fff; box-shadow:0 4px 20px rgba(0,0,0,.1); z-index:1; }
+.ui-frame-wrap iframe { width:100%; height:100%; border:none; }
+.iframe-hint { position:absolute; bottom:-26px; left:0; right:0; text-align:center; font-size:11px; color:#aaa; }
+
+/* Annotation box */
+.anno-box { position:absolute; min-width:180px; max-width:280px; background:var(--box-bg); border:1px solid var(--box-border); border-radius:6px; padding:10px 12px; font-size:12px; line-height:1.6; z-index:10; user-select:none; box-shadow:0 2px 8px rgba(0,0,0,.08); transition:box-shadow .12s; }
+.anno-box:hover { box-shadow:0 4px 16px rgba(0,0,0,.15); z-index:20; }
+.anno-box.selected { border-color:var(--accent); box-shadow:0 0 0 2px rgba(22,119,255,.25); z-index:30; }
+.anno-box .anno-title { font-weight:700; font-size:13px; color:#222; margin-bottom:4px; border-bottom:1px dashed #ffe58f; padding-bottom:3px; cursor:text; outline:none; }
+.anno-box .anno-desc { color:#555; font-size:12px; line-height:1.65; cursor:text; outline:none; }
+.anno-box .drag-handle { position:absolute; top:0; left:0; right:0; height:28px; cursor:move; }
+.anno-box .move-controls { display:none; position:absolute; top:-26px; left:50%; transform:translateX(-50%); background:#fff; border:1px solid #d9d9d9; border-radius:4px; padding:1px; white-space:nowrap; box-shadow:0 2px 6px rgba(0,0,0,.12); }
+.anno-box.selected .move-controls { display:flex; gap:1px; }
+.move-btn { width:20px; height:20px; border:none; background:#fafafa; cursor:pointer; font-size:13px; line-height:20px; text-align:center; border-radius:3px; color:#666; }
+.move-btn:hover { background:var(--accent); color:#fff; }
+
+/* Dot */
+.line-dot { position:absolute; width:10px; height:10px; border-radius:50%; background:var(--accent); border:2px solid #fff; box-shadow:0 0 4px rgba(22,119,255,.5); z-index:15; cursor:move; }
+.line-dot.selected { background:var(--danger); box-shadow:0 0 6px rgba(255,77,79,.6); }
+.line-dot .move-controls { display:none; position:absolute; top:-26px; left:50%; transform:translateX(-50%); background:#fff; border:1px solid #d9d9d9; border-radius:4px; padding:1px; white-space:nowrap; box-shadow:0 2px 6px rgba(0,0,0,.12); }
+.line-dot.selected .move-controls { display:flex; gap:1px; }
+
+/* SVG */
+.line-svg { position:absolute; top:0; left:0; pointer-events:none; z-index:5; overflow:visible; }
+
+/* Page indicator */
+.page-indicator { position:absolute; top:24px; left:20px; width:300px; z-index:2; }
+.page-indicator h2 { font-size:17px; font-weight:700; color:#222; margin-bottom:4px; }
+.page-indicator p { font-size:12px; color:#888; line-height:1.5; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>UI 需求标注</h1>
+  <div class="tab-bar" id="tabBar"></div>
+  <span class="help-text">拖拽标注框/圆点移动 | 点击文字可编辑 | 方向键微调</span>
+</div>
+
+<div class="canvas" id="canvas">
+  <div class="ui-frame-wrap" id="uiFrame">
+    <iframe src="boost-strategy-admin.html" id="prototypeIframe"></iframe>
+    <div class="iframe-hint">请在原型中点击左侧菜单切换到对应页面</div>
+  </div>
+  <svg class="line-svg" id="lineSvg" width="1800" height="1400"></svg>
+</div>
+
+<script>
+// ===================== ANNOTATION DATA =====================
+const PAGES = [
+  {
+    key: 'strategies', label: '1. 策略列表页', desc: '策略管理主视图，含统计卡片、筛选区、数据表格',
+    items: [
+      { id:'s1', title:'侧边导航栏', desc:'[正常] 固定左侧200px，深色主题，展示5个菜单项（策略列表、内容池、全局屏蔽池、映射表配置、系统工具），当前选中项高亮。\n[交互] 点击切换页面，顶部标题同步更新。\n[异常] 若渲染失败，显示兜底文案并提供刷新按钮。', tx:30, ty:120, px:370, py:350 },
+      { id:'s2', title:'Logo 区域', desc:'[正常] 显示"内容提权后台 v2.0"，白色字体，高56px居中，底部分割线。\n[极限] 固定文案不可修改；若字体加载失败使用系统默认字体。', tx:30, ty:280, px:380, py:60 },
+      { id:'s3', title:'顶部标题栏', desc:'[正常] 左侧当前页标题，右侧"操作人：wilkins"。高56px白色背景。\n[状态] 若同步已暂停，操作人左侧额外显示红色"同步已暂停"标签。', tx:450, ty:762, px:750, py:750 },
+      { id:'s4', title:'统计卡片组（5张）', desc:'[正常] 横排5张卡片：总数(蓝)、生效中(绿)、草稿(灰)、已过期(橙)、已停用(红)。数字28px加粗，下方13px灰色标签。\n[数据] 实时反映全量策略统计（不受筛选影响）。\n[缺省] 无策略时全部显示"0"。\n[交互] hover有阴影效果。', tx:1340, ty:100, px:1100, py:130 },
+      { id:'s5', title:'筛选工具栏', desc:'[正常] 4个控件：搜索名称(Input 200px)、状态下拉(生效中/草稿/已过期/已停用)、等级下拉(S+~D)、"+ 新建策略"蓝色按钮。\n[交互] 实时过滤，无需点搜索按钮。各输入支持清除。\n[缺省] 无匹配结果时表格显示空状态。', tx:1340, ty:260, px:1200, py:220 },
+      { id:'s6', title:'策略名称列', desc:'[正常] 蓝色可点击链接，点击打开编辑抽屉。\n[极限] 超180px截断省略号，hover显示完整名称。', tx:30, ty:430, px:430, py:340 },
+      { id:'s7', title:'提权等级标签', desc:'[正常] 彩色Tag：S+/S红、A+火山红、A橙、B+/B蓝、C+/C青、D灰。\n[缺省] 字段为空时显示灰色"--"。', tx:30, ty:560, px:570, py:340 },
+      { id:'s8', title:'状态列 Badge', desc:'[正常] Badge组件：生效中(绿点)、草稿(灰)、已过期(橙)、已停用(红)。\n[状态流转] 草稿→生效中→已过期/已停用。', tx:1340, ty:410, px:1200, py:340 },
+      { id:'s9', title:'关联内容池列', desc:'[正常] Tag列表展示绑定的池名称。\n[缺省] 未关联时显示灰色"未关联"。\n[极限] 超3个Tag时200px内截断，hover Tooltip显示全部。', tx:1340, ty:540, px:1150, py:380 },
+      { id:'s10', title:'操作按钮组', desc:'[正常] 4个链接按钮：启用/停用、编辑、复制、删除(红色)。\n[启用/停用] 按当前状态动态显示文案，点击即切换并写操作日志。\n[删除] Popconfirm"确定删除该策略？"确认后删除并触发boost_tag重算。\n[复制] 名称+"(副本)"，状态=草稿，不复制池绑定。', tx:1340, ty:670, px:1280, py:420 },
+      { id:'s11', title:'分页器', desc:'[正常] 每页10条，显示总条数和页码。\n[交互] 支持跳页和切换每页条数。\n[缺省] 仅1页时分页器仍显示，页码按钮置灰。', tx:30, ty:690, px:700, py:680 },
+    ]
+  },
+  {
+    key: 'pools', label: '2. 内容池管理', desc: '内容池列表，支持规则型和人工型',
+    items: [
+      { id:'p1', title:'筛选工具栏', desc:'[正常] 搜索池名称(200px)、类型下拉(规则型/人工型)、"+ 新建内容池"按钮。\n[交互] 输入即过滤。\n[缺省] 无匹配结果时表格空状态。', tx:1340, ty:100, px:1100, py:110 },
+      { id:'p2', title:'池名称列', desc:'[正常] 蓝色链接，点击打开编辑抽屉。\n[极限] 超180px截断省略号，hover显示完整。', tx:30, ty:120, px:430, py:180 },
+      { id:'p3', title:'池类型标签', desc:'[正常] 规则型=蓝色Tag，人工型=绿色Tag。\n[约束] 创建后类型不可修改（编辑时下拉disabled）。', tx:30, ty:250, px:530, py:180 },
+      { id:'p4', title:'内容数量列', desc:'[正常] 千分位格式(如1,280)，支持列头排序。\n[缺省] 新建/空池显示"0"。', tx:30, ty:370, px:620, py:220 },
+      { id:'p5', title:'绑定策略列', desc:'[正常] 已绑定显示紫色Tag策略名。\n[缺省] 未绑定显示灰色"未绑定"。\n[业务] V1池独占绑定，一池只绑一策略。', tx:30, ty:490, px:720, py:260 },
+      { id:'p6', title:'操作按钮组', desc:'[正常] 编辑/查看内容/复制/删除(红色)。\n[查看内容] 打开内容查看弹窗。\n[删除联动] 删除后自动从已绑定策略中移除。\n[复制] 名称+"(副本)"，解除策略绑定。', tx:1340, ty:230, px:1250, py:220 },
+      { id:'p7', title:'TTL列', desc:'[正常] 3天/7天/14天/30天/永久/跟随规则。\n[业务] TTL基准为first_hit_time，规则变更不重置。', tx:1340, ty:390, px:1100, py:300 },
+      { id:'p8', title:'创建时间列', desc:'[正常] 格式YYYY-MM-DD HH:mm。\n[排序] 默认按时间倒序。', tx:1340, ty:510, px:1150, py:340 },
+    ]
+  },
+  {
+    key: 'pools_drawer_rule', label: '3. 内容池抽屉(规则型)', desc: '规则型池编辑，含规则引擎和黑名单',
+    items: [
+      { id:'pr1', title:'抽屉标题栏', desc:'[正常] "编辑内容池"/"新建内容池"。右上角"取消""保存"按钮。\n[交互] 取消关闭不保存；保存触发校验。\n[校验失败] 必填字段红色错误提示。', tx:1340, ty:100, px:1260, py:60 },
+      { id:'pr2', title:'池名称输入', desc:'[正常] 必填，placeholder"如：春季话题内容池"。\n[校验] 空提交显示"请输入"。\n[极限] 建议最大50字符。', tx:1340, ty:230, px:1150, py:140 },
+      { id:'pr3', title:'类型选择', desc:'[正常] 下拉"规则型"/"人工型"，切换后下方动态替换配置区。\n[约束] 编辑已有池时disabled不可改。\n[联动] 规则型→规则条件组+黑名单；人工型→导入区。', tx:1340, ty:360, px:1150, py:200 },
+      { id:'pr4', title:'规则条件组(AND)', desc:'[正常] 每行3控件：字段下拉(话题/标签/板块/作者ID/是否认证/发布时间)、算子下拉(等于/不等于/包含/在列表中等)、值输入框。\n[交互] "+ 添加条件"新增行；"X"删除行（至少保留1行）。\n[业务] 所有条件AND关系。\n[缺省] 默认1行空规则。', tx:30, ty:120, px:370, py:310 },
+      { id:'pr5', title:'屏蔽内容ID(黑名单)', desc:'[正常] TextArea，每行一个内容ID。\n[业务] 黑名单 > 规则，命中即强制不入池。\n[缺省] 空=不屏蔽。', tx:30, ty:340, px:370, py:450 },
+      { id:'pr6', title:'屏蔽作者ID(黑名单)', desc:'[正常] TextArea，每行一个作者ID，屏蔽该作者所有内容。\n[缺省] 空=不屏蔽。', tx:30, ty:490, px:370, py:530 },
+      { id:'pr7', title:'TTL选择', desc:'[正常] 下拉：3天/7天/14天/30天/跟随规则。\n[业务] "跟随规则"=符合条件就一直在池中。\n[缺省] 默认"7天"。', tx:30, ty:620, px:370, py:610 },
+    ]
+  },
+  {
+    key: 'pools_drawer_manual', label: '4. 内容池抽屉(人工型)', desc: '人工型池编辑，含批量导入',
+    items: [
+      { id:'pm1', title:'ID导入输入区', desc:'[正常] TextArea 4行，支持逗号/换行分隔。\n[校验] 自动去空行去重。\n[极限] 粘贴>10000条时应有加载提示。', tx:30, ty:120, px:370, py:300 },
+      { id:'pm2', title:'文件上传区', desc:'[正常] Upload.Dragger，接受.csv/.txt/.xlsx。\n[交互] 点击/拖拽触发解析，成功提示"文件已解析，导入N条"。\n[失败] 格式错误提示"仅支持CSV/TXT/XLSX"；超10MB提示"文件过大"。\n[缺省] 灰色提示"点击或拖拽文件到此区域"。', tx:30, ty:330, px:370, py:410 },
+      { id:'pm3', title:'导入模式Radio', desc:'[正常] "增量添加"(追加) / "全量覆盖"(清空重导)。\n[交互] 全量覆盖保存前需二次确认弹窗。\n[缺省] 默认"增量添加"。', tx:1340, ty:120, px:1150, py:500 },
+      { id:'pm4', title:'TTL选择(人工型)', desc:'[正常] 3天/7天/14天/30天/永久。\n[注意] 与规则型不同：无"跟随规则"，有"永久"。\n[缺省] 默认"7天"。', tx:1340, ty:300, px:1150, py:570 },
+    ]
+  },
+  {
+    key: 'strategy_drawer', label: '5. 策略编辑抽屉', desc: '策略新建/编辑，含基础配置和效果预览',
+    items: [
+      { id:'sd1', title:'策略名称', desc:'[正常] 必填Input，placeholder"如：春季S级活动提权"。\n[校验] 空→"请输入策略名称"。不允许重名(服务端)。\n[极限] 建议50字符上限。', tx:1340, ty:100, px:1150, py:120 },
+      { id:'sd2', title:'提权等级下拉', desc:'[正常] 必填，选项S+/S/A+/A/B+/B/C+/C/D。\n[校验] 未选→"请选择"。\n[业务] 等级决定火山加权系数。\n[注意] 若需DOWN/BLOCK降权等级需补充选项。', tx:30, ty:120, px:370, py:200 },
+      { id:'sd3', title:'优先级(1-100)', desc:'[正常] InputNumber，默认50。\n[业务] 数字越大优先级越高(Winner-Takes-All)。91-100红线，71-90活动，41-70日常，11-40自动化，1-10实验。\n[校验] 非正整数清空提示。', tx:30, ty:300, px:370, py:250 },
+      { id:'sd4', title:'生效方式Radio', desc:'[正常] 三选一：立即生效/定时/永久。\n[联动] 选"定时"→展开RangePicker；其他→隐藏。\n[缺省] 默认"立即生效"。', tx:30, ty:470, px:370, py:320 },
+      { id:'sd5', title:'生效时间区间', desc:'[正常] RangePicker，仅"定时"可见，格式YYYY-MM-DD HH:mm。\n[校验] 必填；开始≥当前时间；结束>开始。\n[缺省] placeholder"请选择时间区间"。', tx:1340, ty:240, px:1150, py:340 },
+      { id:'sd6', title:'关联内容池(多选)', desc:'[正常] Select多选，仅显示未被其他策略绑定的池（池独占）。\n[交互] Tag形式展示已选，点X移除。\n[业务] 多池取并集，共享策略的优先级和等级。\n[缺省] 无可用池时列表为空。', tx:1340, ty:410, px:1150, py:420 },
+      { id:'sd7', title:'效果预览按钮', desc:'[正常] 全宽蓝色按钮，位于分隔线下方。\n[交互] 点击弹Modal显示：预计影响内容数、池总数、覆盖率。\n[降级] 无法获取实时数据时文字预览"将影响N条"。', tx:1340, ty:570, px:1150, py:520 },
+    ]
+  },
+  {
+    key: 'blocklist', label: '6. 全局屏蔽池', desc: '系统级屏蔽，优先级最高',
+    items: [
+      { id:'b1', title:'警告Alert', desc:'[正常] 橙色Warning，标题"全局屏蔽池优先级最高"，说明屏蔽效果和boost_tag强制清除。\n[常驻] 不可关闭。', tx:1340, ty:100, px:1100, py:110 },
+      { id:'b2', title:'Tab切换', desc:'[正常] 两Tab：\n1."屏蔽内容ID(N)"\n2."屏蔽作者ID(N)"\n[交互] 切换Tab刷新列表。\n[计数] N实时反映条数。', tx:30, ty:120, px:500, py:185 },
+      { id:'b3', title:'批量添加按钮', desc:'[正常] 蓝色"批量添加"，自动识别当前Tab类型。\n[交互] 点击弹出添加弹窗。', tx:30, ty:280, px:410, py:230 },
+      { id:'b4', title:'屏蔽列表表格', desc:'[正常] 列：ID(160px)、添加时间、操作人、操作原因、移除(红色)。\n[移除] Popconfirm确认后移除，恢复正常提权计算。\n[分页] 每页10条。\n[缺省] 空表格显示空状态。', tx:30, ty:430, px:700, py:350 },
+      { id:'b5', title:'批量添加弹窗', desc:'[正常] Modal，标题随Tab类型动态变化。\n[表单] ID列表(TextArea必填，逗号/分号/换行) + 操作原因(Input选填)。\n[交互] 确定→解析去重→批量添加→写操作日志。\n[校验] ID为空→"请输入至少一个ID"。', tx:1340, ty:300, px:900, py:400 },
+    ]
+  },
+  {
+    key: 'mapping', label: '7. 映射表配置', desc: '提权等级→火山系数映射（只读）',
+    items: [
+      { id:'m1', title:'只读Alert', desc:'[正常] 蓝色Info提示"此表为只读配置，修改需联系管理员同步火山控制台"。\n[常驻] 不可关闭。', tx:1340, ty:100, px:1100, py:110 },
+      { id:'m2', title:'等级列(合并行)', desc:'[正常] rowSpan合并相同等级（每等级2行），彩色Tag。\n[视觉] 标准版+轻量版一目了然。', tx:30, ty:120, px:430, py:210 },
+      { id:'m3', title:'boost_tag列', desc:'[正常] Code样式(灰底等宽)，如"boost_sp"。\n[命名] 标准版="boost_{简写}"，轻量版+="_lite"。\n[业务] 每个tag对应火山一条唯一规则。', tx:30, ty:290, px:560, py:250 },
+      { id:'m4', title:'火山系数列', desc:'[正常] 加粗2位小数。>=2.0红色，>=1.5橙色，其余黑色。\n[业务] 推荐分乘数因子，1.0=基准，>1.0=提权。\n[范围] 1.00~3.00。', tx:1340, ty:270, px:1100, py:300 },
+      { id:'m5', title:'适用场景列', desc:'[正常] 文字描述使用场景定位，帮助运营理解等级用途。', tx:1340, ty:410, px:1100, py:400 },
+      { id:'m6', title:'无分页', desc:'[正常] pagination:false，一次展示全部18行。\n[原因] 映射表固定少量数据。\n[样式] bordered + middle。', tx:30, ty:470, px:700, py:600 },
+    ]
+  },
+  {
+    key: 'tools', label: '8. 系统工具', desc: '全量重算、紧急止血、操作日志',
+    items: [
+      { id:'t1', title:'全量重算卡片', desc:'[正常] Card标题"全量重算"，说明文案+蓝色按钮。\n[交互] Popconfirm确认→loading"全量重算中..."→成功"影响N条内容"。\n[日志] 自动写入操作日志。', tx:1340, ty:100, px:1100, py:130 },
+      { id:'t2', title:'紧急止血区域', desc:'[正常] 红色边框区域(#fff2f0)，红色标题"紧急止血"。含L1和L2两张子卡片。\n[视觉] 醒目红色系提醒高危操作。', tx:30, ty:120, px:500, py:230 },
+      { id:'t3', title:'L1：暂停同步', desc:'[正常] 左侧标题+说明，右侧Switch开关。\n[关闭] "运行中"(默认)。\n[打开] "已暂停"→顶栏红色标签+message"已暂停同步下发"。\n[业务] 线上维持现状，新提权不下发。\n[日志] 自动记录。', tx:30, ty:320, px:500, py:320 },
+      { id:'t4', title:'L2：全量归零', desc:'[正常] 红色danger按钮"全量归零"。\n[交互] 三重确认：Popconfirm→Modal.confirm二次确认→执行。\n[结果] 所有策略=已停用，全站回退纯算法推荐。\n[业务] 不可逆，需手动重新启用。', tx:1340, ty:270, px:1200, py:400 },
+      { id:'t5', title:'操作日志表格', desc:'[正常] 列：时间、操作人、类型(彩色Tag：重算蓝/止血红/屏蔽橙/其他灰)、对象、详情。\n[排序] 时间倒序。分页10条。\n[缺省] 无日志显示空状态。', tx:30, ty:520, px:700, py:560 },
+      { id:'t6', title:'日志类型标签', desc:'[正常] 全量重算=蓝色、紧急止血=红色、屏蔽=橙色、策略/池变更=灰色。\n[作用] 颜色区分操作类型和严重程度。', tx:1340, ty:490, px:1050, py:600 },
+    ]
+  },
+  {
+    key: 'content_modal', label: '9. 内容查看弹窗', desc: '查看池内具体内容列表',
+    items: [
+      { id:'c1', title:'弹窗标题', desc:'[正常] "内容查看 — {池名称}"。宽960px，destroyOnClose。\n[关闭] 右上角X或遮罩层。', tx:1340, ty:100, px:1100, py:110 },
+      { id:'c2', title:'搜索框', desc:'[正常] Input.Search 320px，支持PID/UID/标题/作者名模糊搜索。\n[交互] 回车或点搜索触发；清空自动重置。\n[缺省] 无结果时表格空状态。', tx:30, ty:120, px:500, py:170 },
+      { id:'c3', title:'内容数量标签', desc:'[正常] 蓝色Tag"共N条内容"，随搜索过滤实时更新。', tx:30, ty:260, px:700, py:170 },
+      { id:'c4', title:'封面图列', desc:'[正常] 60x60灰色占位区，圆角4px。\n[业务] 应展示内容封面缩略图。\n[缺省] 加载失败/未设置→灰色占位图。', tx:30, ty:370, px:420, py:290 },
+      { id:'c5', title:'标题列', desc:'[正常] 220px宽，ellipsis截断。hover Tooltip完整标题。\n[缺省] 为空显示"--"。', tx:30, ty:490, px:500, py:330 },
+      { id:'c6', title:'话题/标签列', desc:'[正常] 200px，话题Tag(灰)+标签Tag(蓝)依次排列。\n[极限] 标签多时列内换行。\n[缺省] 无话题/标签不显示Tag。', tx:1340, ty:240, px:1050, py:320 },
+      { id:'c7', title:'数据指标列', desc:'[正常] 阅读/点赞/评论，千分位格式。阅读列支持排序。\n[缺省] 为0显示"0"不隐藏。', tx:1340, ty:390, px:1200, py:360 },
+      { id:'c8', title:'分页与滚动', desc:'[正常] 每页8条，固定高420px滚动。\n[缺省] 无数据→空状态插画"当前内容池暂无内容"。', tx:1340, ty:520, px:900, py:600 },
+    ]
+  },
+];
+
+// ===================== STATE =====================
+let currentPage = PAGES[0].key;
+let selectedId = null;
+let isDragging = false;
+let dragEl = null;
+let dragType = ''; // 'box' or 'dot'
+let dragItemId = '';
+let startMouseX = 0, startMouseY = 0;
+let startElX = 0, startElY = 0;
+let rafId = null;
+
+function getPage() { return PAGES.find(p => p.key === currentPage); }
+function getItem(id) { return getPage()?.items.find(i => i.id === id); }
+
+// ===================== RENDER =====================
+function renderTabs() {
+  const bar = document.getElementById('tabBar');
+  bar.innerHTML = PAGES.map(p =>
+    `<button class="tab-btn${p.key === currentPage ? ' active' : ''}" data-page="${p.key}">${p.label}</button>`
+  ).join('');
+}
+
+function buildDOM() {
+  const canvas = document.getElementById('canvas');
+  // Clear old
+  canvas.querySelectorAll('.anno-box,.line-dot,.page-indicator').forEach(el => el.remove());
+  document.getElementById('lineSvg').innerHTML = '';
+
+  const page = getPage();
+  if (!page) return;
+
+  // Page indicator
+  const ind = document.createElement('div');
+  ind.className = 'page-indicator';
+  ind.innerHTML = `<h2>${page.label}</h2><p>${page.desc}</p>`;
+  canvas.appendChild(ind);
+
+  page.items.forEach(item => {
+    // Box
+    const box = document.createElement('div');
+    box.className = 'anno-box';
+    box.id = 'box_' + item.id;
+    box.dataset.itemId = item.id;
+    box.style.left = item.tx + 'px';
+    box.style.top = item.ty + 'px';
+    box.innerHTML = `
+      <div class="drag-handle" data-drag="box" data-item="${item.id}"></div>
+      <div class="move-controls">
+        <button class="move-btn" data-dir="up" data-target="box_${item.id}">↑</button>
+        <button class="move-btn" data-dir="down" data-target="box_${item.id}">↓</button>
+        <button class="move-btn" data-dir="left" data-target="box_${item.id}">←</button>
+        <button class="move-btn" data-dir="right" data-target="box_${item.id}">→</button>
+      </div>
+      <div class="anno-title" contenteditable="true" spellcheck="false">${item.title}</div>
+      <div class="anno-desc" contenteditable="true" spellcheck="false">${item.desc.replace(/\n/g, '<br>')}</div>
+    `;
+    canvas.appendChild(box);
+
+    // Dot
+    const dot = document.createElement('div');
+    dot.className = 'line-dot';
+    dot.id = 'dot_' + item.id;
+    dot.dataset.itemId = item.id;
+    dot.dataset.drag = 'dot';
+    dot.dataset.item = item.id;
+    dot.style.left = (item.px - 5) + 'px';
+    dot.style.top = (item.py - 5) + 'px';
+    dot.innerHTML = `
+      <div class="move-controls">
+        <button class="move-btn" data-dir="up" data-target="dot_${item.id}">↑</button>
+        <button class="move-btn" data-dir="down" data-target="dot_${item.id}">↓</button>
+        <button class="move-btn" data-dir="left" data-target="dot_${item.id}">←</button>
+        <button class="move-btn" data-dir="right" data-target="dot_${item.id}">→</button>
+      </div>
+    `;
+    canvas.appendChild(dot);
+
+    // SVG line
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.id = 'line_' + item.id;
+    line.setAttribute('stroke', '#999');
+    line.setAttribute('stroke-width', '1');
+    line.setAttribute('stroke-dasharray', '4,3');
+    document.getElementById('lineSvg').appendChild(line);
+  });
+
+  updateSelection();
+  updateAllLines();
+}
+
+function updateSelection() {
+  const page = getPage();
+  if (!page) return;
+  page.items.forEach(item => {
+    const box = document.getElementById('box_' + item.id);
+    const dot = document.getElementById('dot_' + item.id);
+    const line = document.getElementById('line_' + item.id);
+    if (!box || !dot || !line) return;
+    const isSel = selectedId === item.id;
+    box.classList.toggle('selected', isSel);
+    dot.classList.toggle('selected', isSel);
+    line.setAttribute('stroke', isSel ? '#1677ff' : '#999');
+    line.setAttribute('stroke-width', isSel ? '2' : '1');
+    line.setAttribute('stroke-dasharray', isSel ? 'none' : '4,3');
+  });
+}
+
+function updateLine(itemId) {
+  const box = document.getElementById('box_' + itemId);
+  const dot = document.getElementById('dot_' + itemId);
+  const line = document.getElementById('line_' + itemId);
+  if (!box || !dot || !line) return;
+
+  const bx = parseFloat(box.style.left) || 0;
+  const by = parseFloat(box.style.top) || 0;
+  const bw = box.offsetWidth;
+  const bh = box.offsetHeight;
+  const dx = (parseFloat(dot.style.left) || 0) + 5;
+  const dy = (parseFloat(dot.style.top) || 0) + 5;
+
+  let sx, sy;
+  if (dx > bx + bw) { sx = bx + bw; sy = Math.min(Math.max(dy, by), by + bh); }
+  else if (dx < bx) { sx = bx; sy = Math.min(Math.max(dy, by), by + bh); }
+  else if (dy > by + bh) { sx = Math.min(Math.max(dx, bx), bx + bw); sy = by + bh; }
+  else { sx = Math.min(Math.max(dx, bx), bx + bw); sy = by; }
+
+  line.setAttribute('x1', sx);
+  line.setAttribute('y1', sy);
+  line.setAttribute('x2', dx);
+  line.setAttribute('y2', dy);
+}
+
+function updateAllLines() {
+  const page = getPage();
+  if (!page) return;
+  page.items.forEach(item => updateLine(item.id));
+}
+
+// ===================== DRAG (smooth, no re-render) =====================
+function onPointerDown(e) {
+  // Move button
+  const moveBtn = e.target.closest('.move-btn');
+  if (moveBtn) {
+    e.preventDefault();
+    e.stopPropagation();
+    const dir = moveBtn.dataset.dir;
+    const targetId = moveBtn.dataset.target;
+    const el = document.getElementById(targetId);
+    if (!el) return;
+    const step = 10;
+    let left = parseFloat(el.style.left) || 0;
+    let top = parseFloat(el.style.top) || 0;
+    if (dir === 'up') top -= step;
+    if (dir === 'down') top += step;
+    if (dir === 'left') left -= step;
+    if (dir === 'right') left += step;
+    el.style.left = Math.max(0, left) + 'px';
+    el.style.top = Math.max(0, top) + 'px';
+    // Sync data
+    const idPart = targetId.replace(/^(box_|dot_)/, '');
+    const item = getItem(idPart);
+    if (item) {
+      if (targetId.startsWith('box_')) { item.tx = Math.max(0, left); item.ty = Math.max(0, top); }
+      else { item.px = Math.max(0, left) + 5; item.py = Math.max(0, top) + 5; }
+    }
+    updateLine(idPart);
+    return;
+  }
+
+  // Editable text - don't start drag
+  if (e.target.isContentEditable) return;
+
+  // Drag handle on box
+  const handle = e.target.closest('[data-drag="box"]');
+  if (handle) {
+    e.preventDefault();
+    const itemId = handle.dataset.item;
+    const box = document.getElementById('box_' + itemId);
+    if (!box) return;
+    startDrag(box, 'box', itemId, e);
+    setSelected(itemId);
+    return;
+  }
+
+  // Drag dot
+  const dot = e.target.closest('[data-drag="dot"]');
+  if (dot) {
+    e.preventDefault();
+    const itemId = dot.dataset.item;
+    startDrag(dot, 'dot', itemId, e);
+    setSelected(itemId);
+    return;
+  }
+
+  // Click on box body (not editable) -> select
+  const annoBox = e.target.closest('.anno-box');
+  if (annoBox) {
+    setSelected(annoBox.dataset.itemId);
+    return;
+  }
+
+  // Click outside -> deselect
+  if (!e.target.closest('.anno-box') && !e.target.closest('.line-dot') && !e.target.closest('.tab-btn')) {
+    setSelected(null);
+  }
+}
+
+function startDrag(el, type, itemId, e) {
+  isDragging = true;
+  dragEl = el;
+  dragType = type;
+  dragItemId = itemId;
+  startMouseX = e.clientX;
+  startMouseY = e.clientY;
+  startElX = parseFloat(el.style.left) || 0;
+  startElY = parseFloat(el.style.top) || 0;
+  document.body.style.cursor = 'move';
+  document.body.style.userSelect = 'none';
+}
+
+function onPointerMove(e) {
+  if (!isDragging || !dragEl) return;
+  if (rafId) cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(() => {
+    const dx = e.clientX - startMouseX;
+    const dy = e.clientY - startMouseY;
+    const newX = Math.max(0, startElX + dx);
+    const newY = Math.max(0, startElY + dy);
+    dragEl.style.left = newX + 'px';
+    dragEl.style.top = newY + 'px';
+    // Sync data
+    const item = getItem(dragItemId);
+    if (item) {
+      if (dragType === 'box') { item.tx = newX; item.ty = newY; }
+      else { item.px = newX + 5; item.py = newY + 5; }
+    }
+    updateLine(dragItemId);
+  });
+}
+
+function onPointerUp() {
+  if (isDragging) {
+    isDragging = false;
+    dragEl = null;
+    document.body.style.cursor = '';
+    document.body.style.userSelect = '';
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+  }
+}
+
+function setSelected(id) {
+  if (selectedId === id) return;
+  selectedId = id;
+  updateSelection();
+}
+
+// ===================== EVENT BINDDING =====================
+document.addEventListener('mousedown', onPointerDown);
+document.addEventListener('mousemove', onPointerMove);
+document.addEventListener('mouseup', onPointerUp);
+
+// Tab clicks (delegation)
+document.getElementById('tabBar').addEventListener('click', (e) => {
+  const btn = e.target.closest('.tab-btn');
+  if (!btn) return;
+  currentPage = btn.dataset.page;
+  selectedId = null;
+  renderTabs();
+  buildDOM();
+});
+
+// ===================== INIT =====================
+renderTabs();
+buildDOM();
+</script>
+</body>
+</html>

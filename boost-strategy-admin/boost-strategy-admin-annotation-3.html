@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>UI 需求标注（响应式 fit-to-screen）</title>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+:root{--accent:#1677ff;--danger:#ff4d4f;--border:#d9d9d9;--bg:#f0f2f5;--box-bg:#fffbe6;--box-border:#ffe58f;--box-doc:#e6f4ff;--box-doc-border:#91caff;--box-diff:#fff1f0;--box-diff-border:#ffa39e}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:#333;overflow-x:hidden;overflow-y:auto}
+.topbar{position:fixed;top:0;left:0;right:0;height:48px;background:#fff;border-bottom:1px solid #e8e8e8;display:flex;align-items:center;padding:0 16px;z-index:9999;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.topbar h1{font-size:14px;font-weight:700;color:#222;margin-right:16px;white-space:nowrap}
+.tab-bar{display:flex;gap:4px;overflow-x:auto;flex:1}
+.tab-btn{padding:5px 12px;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer;font-size:12px;white-space:nowrap;transition:all .15s;color:#555}
+.tab-btn:hover{border-color:var(--accent);color:var(--accent)}
+.tab-btn.active{background:var(--accent);color:#fff;border-color:var(--accent)}
+.legend{display:flex;gap:12px;margin-left:auto;font-size:11px;align-items:center;white-space:nowrap}
+.legend-item{display:flex;align-items:center;gap:4px}
+.legend-dot{width:10px;height:10px;border-radius:2px}
+.scale-wrapper{position:relative;margin-top:48px;overflow:hidden}
+.canvas{position:relative;width:1800px;height:1300px;transform-origin:0 0}
+.ui-frame-wrap{position:absolute;left:340px;top:20px;width:980px;height:720px;border:2px solid #d0d0d0;border-radius:8px;overflow:hidden;background:#fff;box-shadow:0 4px 20px rgba(0,0,0,.1);z-index:1}
+.ui-frame-wrap iframe{width:100%;height:100%;border:none}
+.iframe-hint{position:absolute;bottom:-26px;left:0;right:0;text-align:center;font-size:11px;color:#aaa}
+.nav-guide{position:absolute;bottom:-50px;left:0;right:0;text-align:center;font-size:12px;padding:4px 12px;transition:all .3s}
+.nav-guide.ok{color:#52c41a}
+.nav-guide.fail{color:#faad14;font-weight:600}
+.nav-guide.working{color:var(--accent)}
+.anno-box{position:absolute;min-width:180px;max-width:290px;border-radius:6px;padding:10px 12px;font-size:12px;line-height:1.6;z-index:10;user-select:none;box-shadow:0 2px 8px rgba(0,0,0,.08);transition:box-shadow .12s}
+.anno-box.src-doc{background:var(--box-doc);border:1px solid var(--box-doc-border)}
+.anno-box.src-code{background:var(--box-bg);border:1px solid var(--box-border)}
+.anno-box.src-diff{background:var(--box-diff);border:1px solid var(--box-diff-border)}
+.anno-box:hover{box-shadow:0 4px 16px rgba(0,0,0,.15);z-index:20}
+.anno-box.selected{box-shadow:0 0 0 2px rgba(22,119,255,.3);z-index:30}
+.anno-box .anno-title{font-weight:700;font-size:13px;color:#222;margin-bottom:4px;padding-bottom:3px;cursor:text;outline:none}
+.anno-box.src-doc .anno-title{border-bottom:1px dashed var(--box-doc-border)}
+.anno-box.src-code .anno-title{border-bottom:1px dashed var(--box-border)}
+.anno-box.src-diff .anno-title{border-bottom:1px dashed var(--box-diff-border)}
+.anno-box .anno-desc{color:#555;font-size:12px;line-height:1.65;cursor:text;outline:none}
+.anno-box .drag-handle{position:absolute;top:0;left:0;right:0;height:28px;cursor:move}
+.anno-box .src-tag{position:absolute;top:-9px;right:8px;font-size:10px;padding:1px 6px;border-radius:3px;color:#fff;font-weight:600}
+.src-tag.doc{background:#1677ff}
+.src-tag.code{background:#faad14}
+.src-tag.diff{background:#ff4d4f}
+.src-tag.extra{background:#52c41a}
+.anno-box .move-controls{display:none;position:absolute;top:-26px;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #d9d9d9;border-radius:4px;padding:1px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.anno-box.selected .move-controls{display:flex;gap:1px}
+.move-btn{width:20px;height:20px;border:none;background:#fafafa;cursor:pointer;font-size:13px;line-height:20px;text-align:center;border-radius:3px;color:#666}
+.move-btn:hover{background:var(--accent);color:#fff}
+.line-dot{position:absolute;width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid #fff;box-shadow:0 0 4px rgba(22,119,255,.5);z-index:15;cursor:move}
+.line-dot.selected{background:var(--danger);box-shadow:0 0 6px rgba(255,77,79,.6)}
+.line-dot .move-controls{display:none;position:absolute;top:-26px;left:50%;transform:translateX(-50%);background:#fff;border:1px solid #d9d9d9;border-radius:4px;padding:1px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.12)}
+.line-dot.selected .move-controls{display:flex;gap:1px}
+.line-svg{position:absolute;top:0;left:0;pointer-events:none;z-index:5;overflow:visible}
+.page-indicator{position:absolute;top:24px;left:20px;width:300px;z-index:2}
+.page-indicator h2{font-size:17px;font-weight:700;color:#222;margin-bottom:4px}
+.page-indicator p{font-size:12px;color:#888;line-height:1.5}
+.doc-container{display:none;margin-top:48px;max-width:960px;margin-left:auto;margin-right:auto;padding:32px 40px 60px;background:#fff;min-height:calc(100vh - 48px);font-size:15px;line-height:1.8;color:#333}
+.doc-container h1{font-size:26px;font-weight:700;margin:28px 0 16px;padding-bottom:8px;border-bottom:2px solid #e8e8e8}
+.doc-container h2{font-size:22px;font-weight:700;margin:24px 0 12px;padding-bottom:6px;border-bottom:1px solid #eee}
+.doc-container h3{font-size:18px;font-weight:600;margin:20px 0 10px}
+.doc-container h4{font-size:16px;font-weight:600;margin:16px 0 8px}
+.doc-container p{margin:8px 0}
+.doc-container ul,.doc-container ol{margin:8px 0 8px 24px}
+.doc-container li{margin:4px 0}
+.doc-container blockquote{margin:12px 0;padding:8px 16px;border-left:4px solid #1677ff;background:#f6f8fa;color:#555;border-radius:0 4px 4px 0}
+.doc-container table{border-collapse:collapse;width:100%;margin:12px 0;font-size:13px}
+.doc-container th,.doc-container td{border:1px solid #d9d9d9;padding:8px 12px;text-align:left}
+.doc-container th{background:#fafafa;font-weight:600}
+.doc-container tr:nth-child(even){background:#fafafa}
+.doc-container code{background:#f0f0f0;padding:2px 6px;border-radius:3px;font-size:13px;font-family:"SF Mono",Consolas,monospace}
+.doc-container pre{background:#282c34;color:#abb2bf;padding:16px;border-radius:6px;overflow-x:auto;margin:12px 0}
+.doc-container pre code{background:none;color:inherit;padding:0}
+.doc-container hr{border:none;border-top:1px solid #e8e8e8;margin:24px 0}
+.doc-container strong{font-weight:600}
+.doc-container .mermaid{margin:16px 0;text-align:center}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1>UI 需求标注（PRD+代码）</h1>
+  <div class="tab-bar" id="tabBar"></div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#1677ff"></div>PRD文档</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#faad14"></div>代码提取</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ff4d4f"></div>文档/代码差异</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#52c41a"></div>补充(需确认)</div>
+  </div>
+</div>
+
+<div class="doc-container" id="docContainer"></div>
+<div class="scale-wrapper" id="scaleWrapper">
+  <div class="canvas" id="canvas">
+    <div class="ui-frame-wrap">
+      <iframe src="boost-strategy-admin.html"></iframe>
+      <div class="iframe-hint">请在原型中点击左侧菜单切换到对应页面</div>
+      <div class="nav-guide" id="navGuide"></div>
+    </div>
+    <svg class="line-svg" id="lineSvg" width="1800" height="1300"></svg>
+  </div>
+</div>
+
+<script>
+// ===================== MERMAID INIT =====================
+mermaid.initialize({ startOnLoad: false, theme: 'default' });
+
+// ===================== PRD MARKDOWN =====================
+const PRD_MD = `# 内容提权策略 v2.0 产品需求文档
+
+> 基于 v1.0 评审反馈修订，结合当前业务规模（几十万级内容、2人运营、首页单场景、周级别策略调整）调整。
+
+---
+
+## 1. 项目背景
+
+### 1.1 需求简介
+
+构建内部"内容提权策略模块"，将复杂的提权冲突判断与优先级排序收口到内部系统，对火山推荐系统只输出唯一的 \`boost_tag\`，彻底解决权重叠加不可控问题。
+
+### 1.2 业务诉求
+
+目前内容提权完全依赖火山控制台的规则配置，存在以下痛点：
+
+1. **"加法逻辑"问题**：火山的提权规则基于"字段+算子+系数"，多规则累加生效。例如"视频加权(+20%)"和"热门话题加权(+10%)"同时命中时，内容获得 +30% 权重。策略越多，叠加效应越不可预测，容易导致"流量通胀"或"马太效应"失控
+2. **黑盒运营，缺乏灵活性**：运营策略与火山底层实现深度耦合，每次调整策略都需在火山控制台操作，风险高且效率低
+3. **权限问题**：所有重排参数调整共享同一控制台，搜索推荐未区分，存在分权隐患
+
+### 1.3 核心目标
+
+- **收口与解耦**：复杂策略冲突判断、优先级排序全部在内部系统完成；火山只执行简单的"查表"操作
+- **确定性**：每篇内容在同一时刻，只受一个最核心的策略控制
+
+---
+
+## 2. 业务流程简述
+
+运营在后台配置提权策略并圈选内容池 → 计算引擎按 Winner-Takes-All 规则仲裁出唯一 \`boost_tag\` → 写入本地数据库 → 调用火山 Write API 增量推送 → 火山推荐系统查表加权 → 终端用户消费内容 → 埋点数据回传 → 效果看板辅助运营优化决策。
+
+---
+
+## 3. 详细功能说明
+
+### 3.1 整体架构
+
+#### 3.1.1 系统架构
+
+\`\`\`mermaid
+flowchart TD
+    A([运营后台]) -->|配置策略 & 圈选内容| B[策略管理 / 内容池管理]
+    B -->|策略/内容池变更事件| C[计算引擎<br/>Winner-Takes-All<br/>输出唯一 boost_tag]
+    C -->|写入本地数据库| D[(内容数据库)]
+    D -->|增量推送 boost_tag| E[火山 Write API]
+    E -->|查表加权（无累加）| F[火山推荐系统]
+    F -->|推荐结果| G([终端用户])
+    G -->|行为数据 + 埋点透传| H[效果看板]
+    H -->|运营优化决策| A
+
+    style C fill:#4A90E2,color:#fff
+    style D fill:#50E3C2,color:#333
+    style F fill:#F5A623,color:#fff
+\`\`\`
+
+#### 3.1.2 火山同步方式
+
+通过火山 **Write API**（\`POST /api/v1/dataset/{dataset_id}/write\`）增量更新物品的 \`boost_tag\` 字段。
+
+- 单次支持 10,000 条，请求体上限 10MB
+- 每次策略变更涉及的内容量通常为几百到几千条，完全覆盖
+- 同步延迟可做到分钟级
+- **不采用 CDC/Binlog 链路**：当前数据同步为定时增量批量导入，无 CDC 基础设施，新建成本高且与当前规模不匹配
+
+### 3.2 提权等级映射
+
+维护一套"内部提权等级"到"火山系数"的映射表。火山推荐系统侧一次性配置完成（每个 tag 值对应一条规则，物品只能命中一条，不存在累加）。
+
+- **位置**：运营后台 → 映射表配置页（只读查看，修改需技术确认后操作）
+- **目标**：建立内部等级与火山系数的唯一确定映射
+
+| 内部提权等级 | boost_tag 值 | 火山系数 | 适用场景 |
+|------------|-------------|---------|---------|
+| SS (10+) | 11 | 1.35 | SS级活动、全站级通告 |
+| S (10) | 10 | 1.25 | S级活动 |
+| A+ (9) | 9 | 1.23 | 核心内容、优质创作者扶持 |
+| A (8) | 8 | 1.20 | 潜力内容冷启动、细分领域推荐 |
+| B+ (7) | 7 | 1.17 | 实验性策略 |
+| B (6) | 6 | 1.15 | 非水贴的优质内容 |
+| B- (5) | 5 | 1.12 | — |
+| C+ (4) | 4 | 1.10 | — |
+| C (3) | 3 | 1.08 | — |
+| C- (2) | 2 | 1.05 | 常驻认证创作者 |
+| D (1) | 1 | 1.03 | — |
+| 默认 (0) | 0 | 1.0 | 普通内容 |
+| DOWN-1 | -1 | 0.95 | 相对质量不高的内容 |
+| DOWN-2 | -2 | 0.90 | — |
+| DOWN-3 | -3 | 0.85 | — |
+| DOWN-4 | -4 | 0.80 | 争议内容、低质但未违规 |
+| DOWN-5 | -5 | 0.75 | — |
+| BLOCK | -6 | 0.30 | 基本不出现在首页 |
+| 无（默认） | null | 1.0 | 普通内容 |
+
+### 3.3 提权对象管理（内容池）
+
+- **位置**：运营后台 → 内容池列表页
+- **目标**：定义提权策略的作用域，圈选需要提权的内容集合
+
+#### 3.3.1 关联关系
+
+V1 采用**池独占绑定**：一个策略可绑定多个内容池（取并集），但一个内容池只能被一个策略绑定。
+
+> 独占绑定原因：共享池存在"提权扩散"风险——高优先级策略引用一个已被低优先级策略使用的池时，池内所有内容被意外提升。以当前运营规模（2人、周级别调整），池复用便利远小于引入的理解成本和风险。需要在不同策略中使用相同内容时，复制池配置即可。
+
+#### 3.3.2 池子类型（互斥）
+
+每个内容池只能是以下两种类型之一：
+
+- **规则型**：通过元数据筛选规则自动圈选内容，支持配置"黑名单"进行例外剔除。适合长期维护的自动化策略，如"征集活动池"
+- **人工型**：通过批量导入 ID（post_id）手动圈选内容。适合强运营干预的短期活动，如"优质内容池"
+
+#### 3.3.3 规则引擎（针对规则型）
+
+所有规则组之间默认为 AND（且）关系。V1 支持的字段与算子：
+
+| 字段分类 | 字段名称 | 字段 Key | 值类型 | 支持算子 | 备注 |
+|---------|---------|---------|--------|---------|------|
+| 内容标签 | 话题 | topic | List | contains_any, contains_all | 包含任意一个或包含所有 |
+| 内容标签 | 标签 | tags | List | contains_any, contains_all | 包含任意一个或包含所有 |
+| 内容标签 | 板块 | forum_name | String | =, in | 如：攻略，今州茶馆 |
+| 基础属性 | 作者ID | author_id | Number | =, in | 支持指定单个或多个作者 |
+| 内容标签 | 是否认证 | is_certified | Boolean | = | True / False |
+| 基础属性 | 发布时间 | publish_time | DateTime | >, <, between, last_n_days | 支持绝对时间与相对时间 |
+
+示例规则：\`(话题 包含任一 "春节") AND (板块 = "攻略") AND (发布时间 最近7天)\`
+
+**V2 扩展（待明确数据源后支持）**：
+- 数据指标类：播放/阅读数、点赞数、评论数、分享数
+- 标题模糊匹配（contains, not_contains）
+- 是否原创
+
+**黑名单机制（双维度）**：
+- 屏蔽内容 ID：剔除单篇或多篇不合规或不需要的内容
+- 屏蔽作者 ID：剔除指定作者的所有内容
+- 优先级逻辑：黑名单 > 规则。只要在黑名单中，无论是否符合规则，都强制不入池
+
+#### 3.3.4 内容有效期（TTL）
+
+- **基准**：首次入池时间（\`first_hit_time\`）
+- **存储结构**：\`pool_id + content_id + first_hit_time\`
+- 规则变更导致内容重新命中时，**不重置** TTL（避免规则微调导致全量 TTL 刷新）
+- 仅当内容先出池、后再次命中时，才重新记录 \`first_hit_time\`
+
+默认选项：3 天 / 7 天 / 14 天 / 30 天 / 跟随规则（动态，只要符合规则就一直在池中）
+
+#### 3.3.5 批量导入规范（针对人工型）
+
+- **导入方式**：文本粘贴（逗号/换行分隔）或 Excel/CSV 上传。支持"增量添加"和"全量覆盖"两种模式
+- **有效期设置（TTL）**：导入时必须明确指定有效期
+  - 相对时间：入池后 3天/7天/30天过期
+  - 绝对时间：指定具体截止日期（如 2025-12-31）
+  - 永久有效：仅限特殊场景（如"核心白名单"），需谨慎使用
+
+**导入交互**：
+- 点击"导入"按钮，弹出模态框
+- 选择导入模式（增量添加/全量覆盖），全量覆盖前需二次确认弹窗："全量覆盖将清空当前池内所有内容，确认继续？"
+- 导入中：按钮变为"正在导入..."，显示加载动画，禁用状态
+- 导入成功：轻提示"成功导入 {N} 条内容"，刷新列表
+- 导入失败：红色轻提示"导入失败：{错误原因}"，按钮恢复可点击
+
+#### 3.3.6 内容查看与验证
+
+- **位置**：内容池列表页 → 每行"查看"按钮
+- **交互**：点击"查看"按钮，弹出模态框
+- **展示字段**：标题、封面图（缩略图，50x50）、作者名、话题/标签、阅读数、点赞数、评论数
+- 标题超长时单行截断显示"..."，悬停显示完整标题
+- 支持按 PID、UID、标题、作者名精准搜索
+- 无数据时显示空状态插画："当前内容池暂无内容"
+
+#### 3.3.7 动态更新与延迟
+
+- 规则型更新：策略/规则变更时立即触发重算。期望延迟 < 5 分钟
+- 人工型更新：导入后立即触发重算。期望延迟 < 5 分钟
+
+### 3.4 全局屏蔽池
+
+- **位置**：运营后台 → 全局屏蔽池页（独立入口）
+- **目标**：独立于策略体系的系统级屏蔽机制，用于紧急处置违规内容
+
+**功能说明**：
+- 支持添加屏蔽内容 ID 和屏蔽作者 ID
+- **优先级最高**，高于一切策略
+- 命中全局屏蔽池的内容，\`boost_tag\` 强制设为 -6（BLOCK，系数 0.3）
+- 支持批量添加/移除
+- 添加时必须填写操作原因（必填文本，最多 200 字符）
+- 操作记录自动关联操作人和操作时间
+
+### 3.5 提权策略管理
+
+- **位置**：运营后台 → 策略列表页
+- **目标**：创建和管理提权策略，控制内容在推荐系统中的加权行为
+
+#### 3.5.1 策略与内容池关系（1:N，池独占）
+
+- 一个策略对应多个内容池（取并集）
+- 一个内容池只能绑定一个策略（V1 独占）
+- 示例："春节S级活动"策略可挂载"春节热门话题池"（规则型）+"春节内容精选池"（人工型）
+- 生效范围：策略下所有内容池取并集，共同继承该策略的"优先级"和"提权等级"
+
+#### 3.5.2 策略要素配置
+
+**基础属性**：
+- 策略名称：必填文本，最多 50 字符，不允许重名
+- 优先级：必填正整数，范围 1-100，数字越大优先级越高
+- 提权等级：必选下拉，可选项为映射表中所有等级（SS / S / A+ / ... / DOWN / BLOCK）
+
+**有效期控制**：
+- 立即生效：保存后即时生效，无结束时间
+- 定时生效：绝对时间区间（如 2025-02-01 00:00:00 至 2025-02-15 23:59:59），开始时间不得早于当前时间
+- 永久有效：保存后即时生效，无结束时间
+
+**关联内容池**：
+- 点击"添加内容池"，弹出可选池列表（仅显示未被其他策略绑定的池）
+- 已被绑定的池在列表中置灰，悬停提示"已被策略 {策略名} 绑定"
+
+#### 3.5.3 策略生命周期
+
+策略状态流转：草稿 → 生效中 → 已过期 / 已停用
+
+**策略过期处理**：
+1. 策略状态立即更新为"已过期"
+2. 计算引擎立即重算受影响内容的 \`boost_tag\`（回退到次级策略或 null）
+3. 调用 Write API 批量推送变更
+
+> V1 采用直接同步处理，不做异步削峰。当前规模（单策略覆盖几百到几千条内容）直接处理即可。
+
+**策略列表页**：
+- 顶部统计卡片：总数 / 生效中 / 草稿 / 已过期
+- 支持按名称、状态、提权等级筛选
+- 操作列：启用 / 停用 / 编辑 / 复制 / 删除
+- 删除操作需二次确认弹窗："删除策略后，关联内容的提权将立即失效，确认删除？"
+
+#### 3.5.4 优先级划分规范
+
+| 优先级范围 | 场景定义 | 示例 |
+|-----------|---------|------|
+| 91-100 | 系统红线/最高干预 | 紧急公关降权、法律合规要求 |
+| 71-90 | S级/A级营销活动 | 春节活动、周年庆、代言人内容 |
+| 41-70 | 日常内容运营 | 垂类扶持、热点话题跟进 |
+| 11-40 | 自动化/长尾策略 | 优质作者自动加权、冷启动规则 |
+| 1-10 | 实验性/兜底策略 | 默认规则 |
+
+#### 3.5.5 冲突解决（Winner-Takes-All）
+
+当一篇内容同时命中多个有效策略时，排序规则：\`ORDER BY priority DESC, effective_at DESC\`
+
+1. **第一优先级**：priority 数字越大，优先级越高
+2. **第二优先级**：若优先级数字相同，则 \`effective_at\` 最新的策略生效
+
+不强制要求优先级数字唯一，允许重复以降低运营维护成本。
+
+#### 3.5.6 \`effective_at\` 字段说明
+
+为避免非实质性编辑意外改变仲裁结果，策略表区分 \`updated_at\` 和 \`effective_at\`：
+
+| 操作 | updated_at | effective_at |
+|------|-----------|-------------|
+| 新建策略 | 更新 | 更新 |
+| 修改优先级 | 更新 | 更新 |
+| 修改提权等级 | 更新 | 更新 |
+| 修改关联内容池 | 更新 | 更新 |
+| 修改名称/描述 | 更新 | **不更新** |
+| 启用/停用 | 更新 | **不更新** |
+
+#### 3.5.7 复杂场景处理
+
+**降权与打压**：
+降权是一种特殊的"高优先级"策略。创建策略时选择 DOWN 或 BLOCK 等级，并将优先级设高。由于 Winner-Takes-All 模式，一旦命中降权策略，无论同时命中多高等级的运营活动，系统都强制应用降权标签。
+
+**多策略叠加**：
+V1 明确不支持策略叠加。理由：叠加逻辑导致最终权重不可预测。若需体现叠加效果，运营应创建组合策略（如"春节优质内容"），设定更高优先级，圈选"既在春节池又在优质池"的内容并给予更高等级。
+
+> 计分模块与策略设置/内容圈选完全解耦，后续可单独升级计算策略逻辑。
+
+### 3.6 计算引擎
+
+- **位置**：后台服务（无独立页面，结果体现在策略列表和内容查询中）
+- **目标**：根据策略配置，为每篇内容仲裁出唯一的 \`boost_tag\`
+
+#### 3.6.1 核心计算流程
+
+1. **全局屏蔽检查**：若内容/作者在全局屏蔽池中，直接输出 \`boost_tag = -6\`，跳过后续步骤
+2. **有效性过滤**：剔除 status != Active 或当前时间不在有效期内的策略
+3. **优先级排序**：\`ORDER BY priority DESC, effective_at DESC\`
+4. **择优**：取排序后 Top 1 策略作为生效策略
+5. **映射**：将生效策略的内部等级映射为对应的 \`boost_tag\`
+6. **兜底**：若候选集为空，则 \`boost_tag = null\`（清除提权）
+
+#### 3.6.2 触发机制
+
+| 触发场景 | 处理方式 |
+|---------|---------|
+| 策略新建/编辑/启用 | 立即重算该策略关联内容池的所有内容 \`boost_tag\`，批量推送 |
+| 策略停用/删除 | 立即重算受影响内容（可能回退到次级策略或 null），批量推送 |
+| 策略到达结束时间 | 定时任务（每分钟扫描）检测过期策略，触发重算并推送 |
+| 内容池内容变更（人工型增删） | 立即重算变更内容的 \`boost_tag\`，批量推送 |
+| 全局屏蔽池变更 | 立即将相关内容 \`boost_tag\` 设为 -6 并推送 |
+| 异常修复 | 运营后台"全量重算"按钮 |
+
+#### 3.6.3 写入防抖
+
+计算引擎得出 NewTag 后，必须与数据库中现存 OldTag 比对。仅当 \`NewTag != OldTag\` 时，才执行更新操作和 Write API 推送，减少无效写操作。
+
+### 3.7 风控与紧急止血
+
+- **位置**：运营后台 → 系统工具页
+- **目标**：发生严重事故时，提供无需代码发布的一键止损能力
+
+**Level 1：暂停同步**
+- 行为：暂停 \`boost_tag\` 向火山的 Write API 推送
+- 效果：线上推荐维持现状，不再接受新的提权变更
+- 适用：怀疑数据错乱、正在排查但未造成严重后果
+- 按钮文案："暂停同步"，点击后变为橙色"同步已暂停"，旁边显示"恢复同步"按钮
+
+**Level 2：全量归零**
+- 行为：将火山侧所有已同步的 \`boost_tag\` 重置为 null（默认值）
+- 效果：全站回退到纯算法推荐
+- 适用：严重运营事故（如首页被低质内容占领）
+- 操作需二次确认弹窗："此操作将清除火山侧所有提权标签，全站回退到纯算法推荐，确认执行？"
+- 执行中显示进度："正在重置...已处理 {N}/{Total}"
+
+**全量重算**：
+- 重新计算所有生效策略下所有内容的 \`boost_tag\` 并推送
+- 适用：数据异常修复场景
+- 操作需确认弹窗，执行中显示进度
+
+### 3.8 效果度量
+
+- **位置**：V1 在策略列表页增加核心指标列；V2 做完整效果看板
+- **目标**：量化评估提权策略对内容分发的实际效果
+
+#### 3.8.1 核心指标
+
+基于埋点透传（\`is_boosted\`、\`strategy_id\`、\`boost_level\`）：
+
+| 指标 | 计算方式 | 用途 |
+|------|---------|------|
+| 提权内容曝光占比 | 提权曝光量 / 总曝光量 | 衡量提权覆盖面 |
+| 提权内容点击率 | 提权内容点击量 / 提权内容曝光量 | 衡量提权内容吸引力 |
+| 提权内容互动率 | 提权内容互动量 / 提权内容点击量 | 衡量深度消费 |
+| 对比基线 | 同时段未提权内容的点击率/互动率 | 评估提权是否有正向效果 |
+| 单策略效果 | 按 strategy_id 聚合以上指标 | 运营复盘单条策略表现 |
+
+- 数据侧按天聚合，T+1 出报表
+
+#### 3.8.2 策略效果预览
+
+- **位置**：策略编辑页 → "预览效果"按钮
+- **目标**：运营在上线前预览策略对推荐结果的影响
+
+**预览流程**：
+1. 运营输入一个测试用户 ID
+2. 系统发起两次推荐请求：
+   - 请求 A：当前线上 \`boost_tag\`（不含本策略）
+   - 请求 B：模拟本策略生效后的 \`boost_tag\`
+3. 左右对比展示两次推荐结果差异：
+   - 新进入推荐列表的物品标记为"新增"（绿色标签）
+   - 排名上升的物品标记为"上升"（蓝色箭头）
+   - 被挤出的物品标记为"移出"（灰色删除线）
+
+**降级方案**：预览不写入正式数据。若对比推荐请求不可用，只展示文字预览："本策略将影响 {N} 条内容，boost_tag 将从 {X} 变为 {Y}"
+
+### 3.9 数据埋点与上报
+
+#### 3.9.1 下行透传（服务端 → 客户端）
+
+推荐接口返回列表时，若内容被提权，需在 \`track_info\` 字段中注入策略信息：
+
+\`\`\`json
+{
+  "item_id": "10086",
+  "title": "春节攻略...",
+  "track_info": {
+    "strategy_id": "S_1001",
+    "boost_level": "S",
+    "algo_source": "boost",
+    "request_id": "req_xyz123"
+  }
+}
+\`\`\`
+
+#### 3.9.2 上行上报（客户端 → 数据平台）
+
+客户端触发曝光、点击、播放等事件时，必须将该内容对应的 \`track_info\` 在对应事件中上报：
+
+| 事件名称 | 触发时机 | 新增属性 | 属性说明 | 必填性 |
+|---------|---------|---------|---------|--------|
+| post_show（曝光） | 内容卡片在可见区域停留 > 1s | strategy_id | 策略 ID | 仅提权内容必填 |
+| | | boost_level | 等级（SS/S/A/...） | 仅提权内容必填 |
+| | | is_boosted | 是否提权（Boolean） | 必填 |
+| post_read（点击） | 用户点击进入详情页 | 同上 | 同上 | 同上 |
+| video_play_end（完播） | 视频播放结束/退出 | 同上 + play_duration | 播放时长（ms） | 必填 |
+| post_interact（互动） | 点赞/收藏/评论/分享 | 同上 + interact_type | like/share/... | 必填 |
+
+### 3.10 运营后台页面清单
+
+| 页面 | 功能 |
+|------|------|
+| 策略列表页 | 策略一览，统计卡片（总数/生效/草稿/过期），按名称/状态/等级筛选，操作：启用/停用/编辑/复制/删除 |
+| 策略编辑页（抽屉） | 创建/编辑策略：名称、提权等级、优先级、生效时间、关联内容池、效果预览 |
+| 内容池列表页 | 内容池一览，按名称/类型筛选，操作：编辑/查看内容/复制/删除 |
+| 内容池编辑页（抽屉） | 规则型：条件配置 + 黑名单；人工型：ID 导入 + TTL 设置 |
+| 内容查看弹窗 | 展示池内内容，支持搜索 |
+| 全局屏蔽池页 | 屏蔽内容 ID 和作者 ID 管理 |
+| 映射表配置页 | boost_tag → 火山系数映射表查看 |
+| 系统工具页 | 全量重算、紧急止血（L1/L2）、操作日志 |
+
+### 3.11 操作日志
+
+- **位置**：运营后台 → 系统工具页 → 操作日志
+- 记录所有策略和内容池的变更操作
+- 字段：操作时间、操作人、操作类型、操作对象、变更详情
+- 支持按时间范围、操作人筛选
+- 默认按时间倒序，每页 20 条
+- 无数据时显示："暂无操作记录"
+
+---
+
+## 4. 流程与状态图表
+
+### 4.1 核心业务流程图
+
+\`\`\`mermaid
+flowchart TD
+    Start([运营配置阶段]) --> A[定义内容池<br/>规则型 / 人工型]
+    A --> B[创建策略<br/>关联内容池 & 设置优先级/等级]
+    B --> C{策略是否定时生效?}
+    C -->|立即生效| D[计算引擎触发重算]
+    C -->|定时生效| E[等待生效时间到达]
+    E --> D
+
+    D --> F{内容是否在全局屏蔽池?}
+    F -->|是| G[强制 boost_tag = -6]
+    F -->|否| H[过滤无效策略]
+    H --> I[优先级排序<br/>priority DESC, effective_at DESC]
+    I --> J[Winner-Takes-All<br/>取 Top 1 策略]
+    J --> K{候选集是否为空?}
+    K -->|是| L[boost_tag = null]
+    K -->|否| M[映射为 boost_tag]
+
+    G --> N{NewTag != OldTag?}
+    L --> N
+    M --> N
+    N -->|否| O([结束，无需推送])
+    N -->|是| P[写入本地数据库]
+    P --> Q[调用火山 Write API 推送]
+    Q --> R([火山查表加权生效])
+
+    style D fill:#4A90E2,color:#fff
+    style J fill:#4A90E2,color:#fff
+    style G fill:#E74C3C,color:#fff
+    style R fill:#2ECC71,color:#fff
+\`\`\`
+
+### 4.2 策略生命周期状态机
+
+\`\`\`mermaid
+stateDiagram-v2
+    [*] --> 草稿 : 新建策略（未设生效时间）
+    草稿 --> 生效中 : 设定生效时间 / 立即生效
+    生效中 --> 已停用 : 运营手动停用
+    生效中 --> 已过期 : 到达结束时间（定时任务检测）
+    已停用 --> 生效中 : 运营手动启用
+    已过期 --> [*] : 归档 / 删除
+
+    note right of 生效中 : 计算引擎实时仲裁<br/>boost_tag 推送火山
+    note right of 已过期 : 触发重算<br/>受影响内容回退到次级策略
+\`\`\`
+
+### 4.3 内容池类型决策流程
+
+\`\`\`mermaid
+flowchart LR
+    A{运营需求类型?} -->|长期自动化<br/>如征集活动| B[创建规则型池]
+    A -->|短期强干预<br/>如精选推荐| C[创建人工型池]
+
+    B --> D[配置筛选规则<br/>话题/标签/板块/作者/时间]
+    D --> E[配置黑名单<br/>屏蔽内容ID / 作者ID]
+    E --> F[设置 TTL]
+
+    C --> G[批量导入 post_id<br/>文本粘贴 / CSV上传]
+    G --> H[选择导入模式<br/>增量添加 / 全量覆盖]
+    H --> F
+
+    F --> I[绑定到策略]
+
+    style B fill:#4A90E2,color:#fff
+    style C fill:#F5A623,color:#fff
+\`\`\`
+
+### 4.4 数据模型 ER 图
+
+\`\`\`mermaid
+erDiagram
+    STRATEGY ||--o{ STRATEGY_POOL_BINDIND : "1:N 绑定"
+    CONTENT_POOL ||--|| STRATEGY_POOL_BINDIND : "独占绑定"
+    CONTENT_POOL ||--o{ POOL_CONTENT : "包含"
+    CONTENT_POOL ||--o{ POOL_BLACKLIST : "黑名单"
+    STRATEGY ||--o{ STRATEGY_HIT_DETAIL : "命中明细"
+    CONTENT ||--o{ STRATEGY_HIT_DETAIL : "被命中"
+    CONTENT ||--|| CONTENT_BOOST_RESULT : "最终结果"
+    GLOBAL_BLOCK_POOL ||--o{ GLOBAL_BLOCK_ITEM : "屏蔽项"
+
+    STRATEGY {
+        int id PK
+        string name "策略名称"
+        int priority "优先级 1-100"
+        string boost_level "提权等级"
+        string status "草稿/生效中/已过期/已停用"
+        datetime start_time "生效开始时间"
+        datetime end_time "生效结束时间"
+        datetime effective_at "实质性变更时间"
+        datetime updated_at "最后更新时间"
+    }
+
+    CONTENT_POOL {
+        int id PK
+        string name "池名称"
+        string type "规则型 / 人工型"
+        json rule_config "规则配置(规则型)"
+        string ttl_type "TTL 类型"
+        int ttl_days "TTL 天数"
+    }
+
+    STRATEGY_POOL_BINDIND {
+        int strategy_id FK
+        int pool_id FK
+    }
+
+    POOL_CONTENT {
+        int pool_id FK
+        int content_id FK
+        datetime first_hit_time "首次入池时间"
+        datetime expire_time "过期时间"
+    }
+
+    POOL_BLACKLIST {
+        int pool_id FK
+        string block_type "content / author"
+        string block_id "屏蔽目标ID"
+    }
+
+    STRATEGY_HIT_DETAIL {
+        int content_id FK
+        int strategy_id FK
+        int priority "命中时优先级"
+        datetime hit_time "命中时间"
+    }
+
+    CONTENT_BOOST_RESULT {
+        int content_id PK
+        int final_boost_tag "最终 boost_tag"
+        int winner_strategy_id FK
+        datetime update_time "更新时间"
+    }
+
+    GLOBAL_BLOCK_POOL {
+        int id PK
+        string name "全局屏蔽池"
+    }
+
+    GLOBAL_BLOCK_ITEM {
+        int pool_id FK
+        string block_type "content / author"
+        string block_id "屏蔽目标ID"
+        string reason "操作原因"
+        string operator "操作人"
+        datetime created_at "添加时间"
+    }
+
+    CONTENT {
+        int id PK
+        string title "标题"
+        int author_id "作者ID"
+    }
+\`\`\`
+
+### 4.5 策略变更同步时序图
+
+\`\`\`mermaid
+sequenceDiagram
+    participant 运营 as 运营人员
+    participant 后台 as 运营后台
+    participant 引擎 as 计算引擎
+    participant DB as 内容数据库
+    participant API as 火山 Write API
+    participant 推荐 as 火山推荐系统
+
+    运营->>后台: 编辑策略（修改优先级/等级/内容池）
+    后台->>后台: 更新 updated_at 和 effective_at
+    后台->>引擎: 发送策略变更事件
+
+    引擎->>DB: 查询该策略关联的所有内容池内容
+    loop 逐条内容仲裁
+        引擎->>引擎: 全局屏蔽检查
+        引擎->>引擎: 过滤无效策略
+        引擎->>引擎: 优先级排序 + Winner-Takes-All
+        引擎->>引擎: 映射 boost_tag
+        引擎->>DB: 比对 NewTag vs OldTag
+        alt NewTag != OldTag
+            引擎->>DB: 写入新 boost_tag
+        end
+    end
+
+    引擎->>API: 批量推送变更的 boost_tag（最多 10,000 条/次）
+    API->>推荐: 更新物品 boost_tag 字段
+    推荐-->>运营: 推荐结果生效（分钟级延迟）
+\`\`\`
+
+### 4.6 紧急止血操作时序图
+
+\`\`\`mermaid
+sequenceDiagram
+    participant 运营 as 运营人员
+    participant 后台 as 运营后台
+    participant 引擎 as 计算引擎
+    participant API as 火山 Write API
+    participant 推荐 as 火山推荐系统
+
+    rect rgb(255, 243, 224)
+        Note over 运营,推荐: Level 1：暂停同步
+        运营->>后台: 点击"暂停同步"
+        后台->>引擎: 设置同步开关 = OFF
+        引擎-->>后台: 确认暂停
+        后台-->>运营: 显示"同步已暂停"
+        Note over 推荐: 线上维持现状
+    end
+
+    rect rgb(255, 224, 224)
+        Note over 运营,推荐: Level 2：全量归零
+        运营->>后台: 点击"全量归零" + 二次确认
+        后台->>引擎: 触发全量归零任务
+        引擎->>API: 批量推送所有内容 boost_tag = null
+        API->>推荐: 清除所有提权标签
+        推荐-->>运营: 全站回退纯算法推荐
+    end
+\`\`\`
+
+---
+
+## 5. 实施分期
+
+### Phase 1：核心闭环（V1）
+
+1. 策略 CRUD + 内容池 CRUD（规则型精简字段 + 人工型）
+2. 池独占绑定
+3. 计算引擎（Winner-Takes-All + 直接同步处理）
+4. 火山 Write API 增量推送
+5. 全局屏蔽池
+6. 运营后台全部页面
+7. 策略效果预览（文字预览/对比预览）
+8. 紧急止血（L1/L2）+ 全量重算
+
+### Phase 2：增强能力
+
+9. 规则型池扩展字段（数据指标类，需先明确数据源）
+10. 效果度量看板
+11. 池共享能力（M:N，含冲突提示）
+12. 灰度验证（按流量百分比）
+13. 操作审批（对高优先级策略变更）
+
+---
+
+## 6. 验证方式
+
+1. **单元测试**：计算引擎的 Winner-Takes-All 仲裁逻辑、全局屏蔽优先级
+2. **集成测试**：模拟策略变更 → 计算 boost_tag → 调用 Write API 推送
+3. **对比测试**：同一用户 + 场景，开启/关闭策略，对比推荐结果差异
+4. **运营验收**：在后台创建各类型策略和内容池，验证推荐结果符合预期
+
+---
+
+## 附：v1.0 → v2.0 变更记录
+
+| # | 变更内容 | 类型 |
+|---|---------|------|
+| 1 | 火山同步从 CDC/Binlog 改为 Write API 增量推送 | 架构调整 |
+| 2 | 去除增量扫描/Redis延迟队列/全量对账，改为直接同步处理 | 简化 |
+| 3 | 规则型池字段从 12+ 精简为 6 个核心字段 | 简化 |
+| 4 | 内容池绑定从 M:N 改为独占（V1） | 风险规避 |
+| 5 | TTL 基准明确为首次入池时间，规则变更不重置 | 明确化 |
+| 6 | 新增全局屏蔽池 | 新增 |
+| 7 | 优先级方向反转（数字越大越高） | 调整 |
+| 8 | 新增 effective_at 字段，分离仲裁权重时间 | 新增 |
+| 9 | 新增策略效果度量指标定义 | 新增 |
+| 10 | 新增策略效果预览功能 | 新增 |
+`;
+
+const CANVAS_W = 1800, CANVAS_H = 1300;
+let currentScale = 1;
+let showingDoc = false;
+
+const PAGES = [
+  {
+    key:'strategies', label:'1. 策略列表页', desc:'PRD 3.5 策略管理 + 3.10 运营后台页面清单',
+    items:[
+      {id:'s1',src:'doc',title:'侧边导航栏',desc:'[正常] PRD 3.10定义5个页面：策略列表、内容池管理、全局屏蔽池、映射表配置、系统工具。固定左侧200px深色主题，当前选中项高亮。\n[交互] 点击菜单项切换页面，顶部标题同步更新。\n[补充] 若菜单渲染失败，应显示兜底文案并提供刷新按钮。',tx:20,ty:120,px:370,py:350},
+      {id:'s2',src:'code',title:'Logo 区域',desc:'[正常] 代码中固定文案"内容提权后台 v2.0"（className: logo-area），白色字体高56px居中，底部1px分割线。\n[极限] 固定文案不可修改。',tx:20,ty:290,px:380,py:55},
+      {id:'s3',src:'doc',title:'顶部标题栏 + 同步状态',desc:'[正常] PRD 3.7：左侧当前页标题，右侧操作人。\n[状态] 若同步已暂停（PRD Level 1止血），操作人左侧显示红色"同步已暂停"标签。\n[代码] syncPaused 状态驱动，Tag color="red"。',tx:450,ty:762,px:750,py:748},
+      {id:'s4',src:'doc',title:'统计卡片组（5张）',desc:'[正常] PRD 3.5.3：策略状态统计。5张卡片横排：总数(蓝)、生效中(绿)、草稿(灰)、已过期(橙)、已停用(红)。数字28px加粗。\n[数据] 实时反映全量统计，不受筛选影响。\n[缺省] 无策略时所有卡片显示"0"。\n[代码] counts = useMemo 计算。',tx:1340,ty:100,px:1100,py:130},
+      {id:'s5',src:'doc',title:'筛选工具栏',desc:'[正常] PRD 3.5.3定义：按名称/状态/等级筛选。\n[代码] 4个控件：搜索名称(Input 200px)、状态下拉(active/draft/expired/disabled 来自STATUS_MAP)、等级下拉(S+~D 来自BOOST_LEVELS)、"+ 新建策略"按钮。\n[交互] 实时过滤，无需点搜索按钮。\n[缺省] 无匹配时表格空状态。',tx:1340,ty:270,px:1200,py:218},
+      {id:'s6',src:'doc',title:'策略名称列',desc:'[正常] PRD 3.5.2：策略名称，必填，最多50字符，不允许重名。蓝色链接样式。\n[交互] 点击打开编辑抽屉（openSDrawer）。\n[极限] 超180px截断省略号，hover显示完整。',tx:20,ty:440,px:430,py:335},
+      {id:'s7',src:'diff',title:'提权等级标签',desc:'[差异] PRD 2.3映射表定义等级为SS/S/A+/A/B+/B/B-/C+/C/C-/D/DOWN/BLOCK共17级。\n代码BOOST_LEVELS仅含S+/S/A+/A/B+/B/C+/C/D共9级，缺少SS/B-/C-/DOWN/BLOCK，且用S+替代了SS。\n研发需对齐PRD补全等级选项。\n[正常] 彩色Tag展示，颜色来自LEVEL_COLORS常量。',tx:20,ty:590,px:570,py:335},
+      {id:'s8',src:'code',title:'状态列 Badge',desc:'[正常] 代码STATUS_MAP定义4种状态：active(绿/success)、draft(灰/default)、expired(橙/warning)、disabled(红/error)。\n[业务] PRD 3.5.3生命周期：草稿→生效中→已过期/已停用。',tx:1340,ty:430,px:1200,py:335},
+      {id:'s9',src:'doc',title:'关联内容池列',desc:'[正常] PRD 3.5.1：一个策略对应多个内容池（取并集），池独占绑定。Tag列表展示绑定池名。\n[缺省] 未关联时灰色"未关联"（代码: Text type="secondary"）。\n[极限] 超3个Tag在200px内截断，hover Tooltip。',tx:1340,ty:555,px:1150,py:375},
+      {id:'s10',src:'doc',title:'操作按钮组',desc:'[正常] PRD 3.5.3定义操作：启用/停用/编辑/复制/删除。\n[启用/停用] 按当前状态动态切换文案，点击立即切换并写操作日志（代码: toggleStrategy→setLogs）。\n[删除] PRD要求二次确认"删除策略后，关联内容的提权将立即失效，确认删除？"\n[差异] 代码Popconfirm文案为"确定删除该策略？"，缺少"提权立即失效"的提示，需对齐PRD。\n[复制] 名称+"(副本)"，状态=draft，poolIds清空。',tx:1340,ty:680,px:1280,py:415},
+      {id:'s11',src:'extra',title:'分页器',desc:'[补充] PRD未明确分页规则。代码pageSize=10。\n[正常] 表格底部分页，每页10条，显示总条数。\n[缺省] 仅1页时分页器仍显示，页码按钮置灰。',tx:20,ty:720,px:700,py:680},
+    ]
+  },
+  {
+    key:'pools', label:'2. 内容池管理', desc:'PRD 3.3 提权对象管理（内容池）',
+    items:[
+      {id:'p1',src:'doc',title:'筛选工具栏',desc:'[正常] PRD 3.10：内容池一览，按名称/类型筛选。\n[代码] 搜索池名称(200px) + 类型下拉(rule=规则型/manual=人工型) + "+ 新建内容池"按钮。\n[交互] 输入即过滤。',tx:1340,ty:100,px:1100,py:110},
+      {id:'p2',src:'doc',title:'池名称列',desc:'[正常] 蓝色链接，点击打开编辑抽屉（openPDrawer）。\n[极限] 超180px截断省略号。',tx:20,ty:120,px:430,py:178},
+      {id:'p3',src:'doc',title:'池类型标签',desc:'[正常] PRD 3.3.2：池子类型互斥，规则型=蓝色Tag，人工型=绿色Tag。\n[约束] 创建后类型不可修改。\n[代码] 编辑时Select disabled={!!editingP}。',tx:20,ty:255,px:530,py:178},
+      {id:'p4',src:'code',title:'内容数量列',desc:'[正常] 千分位格式(toLocaleString)，支持列头排序(sorter)。\n[缺省] 新建/空池显示"0"。',tx:20,ty:380,px:620,py:218},
+      {id:'p5',src:'doc',title:'绑定策略列',desc:'[正常] PRD 3.3.1：V1池独占绑定，一个池只能被一个策略绑定。已绑定显示紫色Tag策略名。\n[缺省] 未绑定显示灰色"未绑定"。\n[业务] 独占原因：共享池存在"提权扩散"风险。',tx:20,ty:500,px:720,py:258},
+      {id:'p6',src:'doc',title:'操作按钮组',desc:'[正常] PRD 3.10：编辑/查看内容/复制/删除。\n[查看内容] 点击打开内容查看弹窗（PRD 3.3.6）。\n[删除联动] 代码deletePool中自动从strategies的poolIds移除。\n[复制] 名称+"(副本)"，strategyId=null。',tx:1340,ty:235,px:1250,py:218},
+      {id:'p7',src:'doc',title:'TTL列',desc:'[正常] PRD 3.3.4：内容有效期，基准为首次入池时间(first_hit_time)。\n选项：3天/7天/14天/30天/跟随规则。\n[业务] 规则变更不重置TTL，仅出池后再命中才重新记录。',tx:1340,ty:395,px:1100,py:298},
+      {id:'p8',src:'extra',title:'创建时间列',desc:'[补充] PRD未定义此列。代码展示createdAt字段，格式YYYY-MM-DD HH:mm。\n[排序] 默认按时间倒序。',tx:1340,ty:520,px:1150,py:338},
+    ]
+  },
+  {
+    key:'pool_drawer_rule', label:'3. 内容池抽屉(规则型)', desc:'PRD 3.3.3 规则引擎 + 3.3.4 TTL + 黑名单',
+    items:[
+      {id:'pr1',src:'code',title:'抽屉标题与按钮',desc:'[正常] 代码: editingP?"编辑内容池":"新建内容池"，宽620px。右上角"取消"+"保存"按钮。\n[交互] 取消关闭不保存；保存触发pForm.validateFields校验。\n[校验失败] 必填字段红色错误提示。',tx:1340,ty:100,px:1260,py:55},
+      {id:'pr2',src:'doc',title:'池名称',desc:'[正常] PRD 3.3：必填。\n[校验] rules: required，空提交显示"请输入"。\n[补充] PRD未定义长度限制，建议50字符上限。',tx:1340,ty:240,px:1150,py:138},
+      {id:'pr3',src:'doc',title:'类型选择',desc:'[正常] PRD 3.3.2：规则型/人工型互斥。\n[约束] 编辑已有池时disabled不可改。\n[联动] 切换类型→下方表单区完全替换（代码PoolTypeWatch组件）。',tx:1340,ty:370,px:1150,py:198},
+      {id:'pr4',src:'doc',title:'规则条件组(AND)',desc:'[正常] PRD 3.3.3定义V1支持6个字段：话题(topic)、标签(tags)、板块(forum_name)、作者ID(author_id)、是否认证(is_certified)、发布时间(publish_time)。所有规则AND关系。\n[差异] 代码RULE_FIELDS中"板块"key为section，PRD定义为forum_name；代码"标签"key为tag，PRD定义为tags。研发需对齐字段名。\n[交互] "+ 添加条件"新增行(Form.List add)；"X"删除行，至少保留1行。\n[算子] PRD定义：contains_any/contains_all/==/in/>/</between/last_n_days。\n[差异] 代码RULE_OPERATORS含eq/neq/contains/in/gt/lt/between/last_n_days，多了neq(不等于)，PRD中无此算子，需确认。',tx:20,ty:120,px:370,py:308},
+      {id:'pr5',src:'doc',title:'屏蔽内容ID(黑名单)',desc:'[正常] PRD 3.3.3黑名单机制：屏蔽内容ID，剔除单篇不合规内容。\n[业务] 黑名单 > 规则，命中即强制不入池。\n[代码] TextArea，每行一个ID。\n[缺省] 空=不屏蔽。',tx:20,ty:370,px:370,py:448},
+      {id:'pr6',src:'doc',title:'屏蔽作者ID(黑名单)',desc:'[正常] PRD 3.3.3：屏蔽作者ID，剔除指定作者所有内容。\n[代码] TextArea，每行一个作者ID。\n[缺省] 空=不屏蔽。',tx:20,ty:510,px:370,py:528},
+      {id:'pr7',src:'doc',title:'TTL选择(规则型)',desc:'[正常] PRD 3.3.4定义5个选项：3天/7天/14天/30天/跟随规则。\n[业务] "跟随规则"=持续符合条件就一直在池中。\n[缺省] 代码默认"7天"。',tx:20,ty:640,px:370,py:608},
+    ]
+  },
+  {
+    key:'pool_drawer_manual', label:'4. 内容池抽屉(人工型)', desc:'PRD 3.3.5 批量导入规范',
+    items:[
+      {id:'pm1',src:'doc',title:'ID导入输入区',desc:'[正常] PRD 3.3.5：文本粘贴（逗号/换行分隔）。\n[代码] TextArea 4行，placeholder示例PID_001~003。\n[补充] PRD未定义上限，建议>10000条时显示加载提示。',tx:20,ty:120,px:370,py:298},
+      {id:'pm2',src:'doc',title:'文件上传区',desc:'[正常] PRD 3.3.5：支持Excel/CSV上传。\n[代码] Upload.Dragger，accept .csv/.txt/.xlsx，单文件。\n[交互] 点击/拖拽触发，成功message.info"文件已解析，导入N条"。\n[补充] 格式错误应提示"仅支持CSV/TXT/XLSX"；超10MB应提示"文件过大"。',tx:20,ty:340,px:370,py:408},
+      {id:'pm3',src:'doc',title:'导入模式Radio',desc:'[正常] PRD 3.3.5：支持"增量添加"和"全量覆盖"两种模式。\n[交互] PRD要求全量覆盖需二次确认"全量覆盖将清空当前池内所有内容，确认继续？"\n[差异] 代码中未实现全量覆盖的二次确认弹窗，研发需补充。\n[缺省] 默认"增量添加"。',tx:1340,ty:120,px:1150,py:498},
+      {id:'pm4',src:'doc',title:'TTL选择(人工型)',desc:'[正常] PRD 3.3.5定义有效期选项：\n- 相对时间：3天/7天/30天\n- 绝对时间：指定截止日期\n- 永久有效\n[差异] 代码选项为3天/7天/14天/30天/永久，缺少"绝对时间"选项和14天（PRD未提及14天）。研发需对齐。\n[缺省] 默认"7天"。',tx:1340,ty:310,px:1150,py:568},
+    ]
+  },
+  {
+    key:'strategy_drawer', label:'5. 策略编辑抽屉', desc:'PRD 3.5.2 策略要素配置',
+    items:[
+      {id:'sd1',src:'doc',title:'策略名称',desc:'[正常] PRD 3.5.2：必填，最多50字符，不允许重名。\n[代码] Input placeholder"如：春季S级活动提权"，rules: required。\n[校验] 空→"请输入策略名称"。重名需服务端校验。',tx:1340,ty:100,px:1150,py:118},
+      {id:'sd2',src:'diff',title:'提权等级下拉',desc:'[差异] PRD 3.5.2定义可选：SS/S/A+/A/B+/B/B-/C+/C/C-/D/DOWN-1~5/BLOCK，共17+等级。\n代码BOOST_LEVELS仅9项(S+~D)，严重缺失降权等级(DOWN/BLOCK)。\n降权是PRD 3.5.7的核心场景，必须补全。\n[校验] 必填，未选→"请选择"。',tx:20,ty:120,px:370,py:198},
+      {id:'sd3',src:'doc',title:'优先级(1-100)',desc:'[正常] PRD 3.5.2：必填正整数1-100，数字越大优先级越高。\n[业务] PRD 3.5.4优先级规范：91-100系统红线，71-90 S/A级活动，41-70日常运营，11-40自动化，1-10实验性。\n[代码] InputNumber min=1 max=100，默认50。\n[校验] 非正整数清空提示。',tx:20,ty:320,px:370,py:248},
+      {id:'sd4',src:'doc',title:'生效方式Radio',desc:'[正常] PRD 3.5.2定义3种：\n1."立即生效"：保存后即时生效\n2."定时生效"：绝对时间区间\n3."永久有效"：即时生效无结束时间\n[联动] 选"定时"→展开RangePicker(代码EffectTypeWatch)；其他→隐藏。\n[缺省] 默认"立即生效"。',tx:20,ty:490,px:370,py:318},
+      {id:'sd5',src:'doc',title:'生效时间区间',desc:'[正常] PRD 3.5.2：定时生效时的绝对时间区间。\n[代码] RangePicker showTime，格式YYYY-MM-DD HH:mm，rules: required。\n[校验] PRD要求开始时间不得早于当前时间。\n[补充] 代码未实现"开始≥当前时间"校验，研发需补充。',tx:1340,ty:250,px:1150,py:338},
+      {id:'sd6',src:'doc',title:'关联内容池(多选)',desc:'[正常] PRD 3.5.1：一策略多池(取并集)，池独占绑定。\n[代码] Select mode=multiple，unboundPoolOptions过滤已被其他策略绑定的池。\n[交互] Tag形式展示已选，X移除。\n[缺省] 无可用池时列表为空。\n[业务] 已被绑定的池不出现在选项中（代码已实现）。',tx:1340,ty:420,px:1150,py:418},
+      {id:'sd7',src:'doc',title:'效果预览按钮',desc:'[正常] PRD 3.8.2：策略效果预览。运营输入测试用户ID，左右对比推荐结果差异（新增/上升/移出标记）。\n[差异] 代码实现为简化版Modal，仅显示3个Statistic(预计影响/池总数/覆盖率)，未实现PRD要求的"输入测试用户ID→双请求对比"完整流程。研发需按PRD补充。\n[降级] PRD定义退化方案：文字预览"本策略将影响N条内容"。',tx:1340,ty:580,px:1150,py:518},
+    ]
+  },
+  {
+    key:'blocklist', label:'6. 全局屏蔽池', desc:'PRD 3.4 全局屏蔽池',
+    items:[
+      {id:'b1',src:'doc',title:'警告Alert',desc:'[正常] PRD 3.4：全局屏蔽池优先级最高，高于一切策略。命中后boost_tag强制=-6(BLOCK,系数0.3)。\n[差异] 代码Alert描述为"boost_tag将被强制清除"，PRD明确是设为-6而非清除(null)，研发需对齐。\n[常驻] 不可关闭。',tx:1340,ty:100,px:1100,py:108},
+      {id:'b2',src:'doc',title:'Tab切换',desc:'[正常] PRD 3.4支持两维度屏蔽：内容ID和作者ID。\n[代码] Tabs两页："屏蔽内容ID(N)"/"屏蔽作者ID(N)"，N实时反映条数。\n[交互] 切换Tab刷新列表。',tx:20,ty:120,px:500,py:183},
+      {id:'b3',src:'doc',title:'批量添加按钮',desc:'[正常] PRD 3.4：支持批量添加/移除，需记录操作原因和操作人。\n[交互] 点击弹出添加弹窗（BlocklistAddModal）。',tx:20,ty:270,px:410,py:228},
+      {id:'b4',src:'doc',title:'屏蔽列表表格',desc:'[正常] PRD 3.4定义字段。\n[代码] 列：ID(160px)、添加时间、操作人、操作原因、移除(红色Popconfirm)。\n[移除] 确认后removeBlockItem，恢复正常提权计算。\n[补充] PRD要求"记录操作原因"，移除操作也应记录日志，代码未实现移除日志。',tx:20,ty:420,px:700,py:348},
+      {id:'b5',src:'doc',title:'批量添加弹窗',desc:'[正常] PRD 3.4：添加时必须填写操作原因（必填，最多200字符）。\n[差异] 代码中操作原因字段为选填(无required规则)，PRD要求必填，研发需加required校验。\n[代码] TextArea支持逗号/分号/换行分隔，自动split+trim+filter。',tx:1340,ty:300,px:900,py:398},
+    ]
+  },
+  {
+    key:'mapping', label:'7. 映射表配置', desc:'PRD 3.2 提权等级映射',
+    items:[
+      {id:'m1',src:'doc',title:'只读Alert',desc:'[正常] PRD 3.2：映射表在运营后台有单独页面查看，修改需技术确认后操作。\n[代码] Alert type=info，提示联系管理员。\n[常驻] 不可关闭。',tx:1340,ty:100,px:1100,py:108},
+      {id:'m2',src:'diff',title:'映射表数据',desc:'[差异] PRD 3.2定义18级映射(SS~BLOCK，boost_tag为整数-6~11，系数0.30~1.35)。\n代码MAPPING_DATA为18行但结构完全不同：使用字符串tag(如boost_sp)而非整数，系数范围1.00~3.00，且每个等级分标准/轻量两版。\n这是最核心的差异，映射表是整个系统的基础，研发必须按PRD重构。',tx:20,ty:120,px:430,py:208},
+      {id:'m3',src:'code',title:'等级列(合并行)',desc:'[正常] 代码用rowSpan合并相同等级(每等级2行)，彩色Tag展示。\n[补充] 若按PRD重构为整数tag，合并行逻辑需调整。',tx:20,ty:350,px:430,py:348},
+      {id:'m4',src:'code',title:'火山系数列',desc:'[正常] 加粗2位小数。代码中>=2.0红色danger，>=1.5橙色warning。\n[补充] PRD系数范围0.30~1.35，按PRD对齐后颜色阈值需重新定义。',tx:1340,ty:280,px:1100,py:298},
+      {id:'m5',src:'code',title:'适用场景列',desc:'[正常] 文字描述每个tag的使用场景。\n[业务] PRD 3.2定义了各等级适用场景(如SS=全站级通告，BLOCK=基本不出现在首页)。',tx:1340,ty:420,px:1100,py:398},
+      {id:'m6',src:'extra',title:'无分页',desc:'[补充] PRD未定义分页。代码pagination=false一次展示全部。数据量固定较少，合理。',tx:20,ty:500,px:700,py:598},
+    ]
+  },
+  {
+    key:'tools', label:'8. 系统工具', desc:'PRD 3.6计算引擎 + 3.7风控 + 3.11操作日志',
+    items:[
+      {id:'t1',src:'doc',title:'全量重算卡片',desc:'[正常] PRD 3.6.2触发机制：运营后台提供手动"全量重算"按钮，重新计算所有生效策略下所有内容的boost_tag并推送。\n[代码] Popconfirm确认→message.loading 2.5s→success"影响15,328条"。\n[日志] 代码自动写入setLogs。',tx:1340,ty:100,px:1100,py:128},
+      {id:'t2',src:'doc',title:'紧急止血区域',desc:'[正常] PRD 3.7定义两级止损。红色边框区域(#fff2f0)，标题"紧急止血"。\n[业务] 发生严重事故时，无需代码发布的一键止损。',tx:20,ty:120,px:500,py:228},
+      {id:'t3',src:'doc',title:'L1：暂停同步',desc:'[正常] PRD 3.7 Level 1：暂停boost_tag向火山Write API推送，线上维持现状。\n[代码] Switch开关，关="运行中"(默认)，开="已暂停"。\n[交互] 暂停→顶栏红色标签+message.warning；恢复→标签消失+message.success。\n[日志] 代码自动记录。',tx:20,ty:320,px:500,py:318},
+      {id:'t4',src:'doc',title:'L2：全量归零',desc:'[正常] PRD 3.7 Level 2：将火山侧所有boost_tag重置为null，全站回退纯算法推荐。\n[交互] PRD要求二次确认"此操作将清除火山侧所有提权标签，确认执行？"\n[代码] 实现了三重确认(Popconfirm→Modal.confirm→执行)，比PRD更严格，可保留。\n[结果] 所有策略=disabled。',tx:1340,ty:275,px:1200,py:398},
+      {id:'t5',src:'doc',title:'操作日志表格',desc:'[正常] PRD 3.11：记录所有策略和内容池变更。字段：操作时间、操作人、操作类型、操作对象、变更详情。支持按时间范围、操作人筛选。\n[差异] 代码未实现"按时间范围/操作人筛选"功能，仅有静态表格，研发需补充筛选。\n[排序] 时间倒序。分页10条。',tx:20,ty:520,px:700,py:558},
+      {id:'t6',src:'code',title:'日志类型标签',desc:'[正常] 代码用彩色Tag区分：全量重算=蓝、紧急止血=红、屏蔽=橙、其他=灰。\n[补充] PRD未定义颜色规范，当前实现合理可保留。',tx:1340,ty:490,px:1050,py:598},
+    ]
+  },
+  {
+    key:'content_modal', label:'9. 内容查看弹窗', desc:'PRD 3.3.6 内容查看与验证',
+    items:[
+      {id:'c1',src:'doc',title:'弹窗标题与尺寸',desc:'[正常] PRD 3.3.6：每个内容池提供"内容查看"功能，弹出模态框。\n[代码] 标题"内容查看 — {池名称}"，宽960px，destroyOnClose。\n[关闭] 右上角X或遮罩层。',tx:1340,ty:100,px:1100,py:108},
+      {id:'c2',src:'doc',title:'搜索框',desc:'[正常] PRD 3.3.6：支持按PID、UID、标题、作者名精准搜索。\n[代码] Input.Search 320px，模糊匹配(includes)。\n[差异] PRD说"精准搜索"，代码实现为模糊搜索(includes)，需确认使用哪种。\n[缺省] 无结果时表格空状态。',tx:20,ty:120,px:500,py:168},
+      {id:'c3',src:'extra',title:'内容数量标签',desc:'[补充] PRD未定义。代码显示蓝色Tag"共N条内容"，随搜索实时更新。展示合理可保留。',tx:20,ty:280,px:700,py:168},
+      {id:'c4',src:'doc',title:'展示字段',desc:'[正常] PRD 3.3.6定义字段：标题、封面图、作者名、话题/标签、阅读数、点赞数、评论数。\n[代码] 完全匹配，列顺序：封面(60x60占位)→标题(220px ellipsis)→作者(70px)→话题/标签(Tag)→阅读→点赞→评论。\n[缺省] 封面加载失败→灰色占位图；标题为空→应显示"--"。',tx:20,ty:410,px:500,py:288},
+      {id:'c5',src:'code',title:'数据指标列',desc:'[正常] 阅读/点赞/评论，千分位格式(toLocaleString)。阅读列支持排序(sorter)。\n[缺省] 为0显示"0"不隐藏。',tx:1340,ty:260,px:1200,py:328},
+      {id:'c6',src:'extra',title:'分页与滚动',desc:'[补充] PRD未定义分页。代码pageSize=8，固定高420px滚动(scroll.y:420)。\n[缺省] 无数据应显示空状态插画"当前内容池暂无内容"。',tx:1340,ty:410,px:900,py:598},
+    ]
+  },
+];
+
+// ===================== STATE =====================
+let currentPage = PAGES[0].key, selectedId = null;
+let isDragging = false, dragEl = null, dragType = '', dragItemId = '';
+let startMouseX = 0, startMouseY = 0, startElX = 0, startElY = 0, rafId = null;
+
+function getPage() { return PAGES.find(p => p.key === currentPage); }
+function getItem(id) { return getPage()?.items.find(i => i.id === id); }
+
+// ===================== FIT-TO-SCREEN SCALING =====================
+function fitToScreen() {
+  const vw = window.innerWidth;
+  // Scale to fit width — always fill the full browser width
+  currentScale = vw / CANVAS_W;
+
+  const canvas = document.getElementById('canvas');
+  canvas.style.transform = `scale(${currentScale})`;
+
+  const wrapper = document.getElementById('scaleWrapper');
+  wrapper.style.width = vw + 'px';
+  wrapper.style.height = Math.ceil(CANVAS_H * currentScale) + 'px';
+}
+
+window.addEventListener('resize', fitToScreen);
+
+// ===================== RENDER =====================
+function renderTabs() {
+  const docBtn = `<button class="tab-btn${showingDoc ? ' active' : ''}" data-page="__doc__" style="${showingDoc ? '' : ''}">需求文档</button>`;
+  const pageBtns = PAGES.map(p =>
+    `<button class="tab-btn${!showingDoc && p.key === currentPage ? ' active' : ''}" data-page="${p.key}">${p.label}</button>`
+  ).join('');
+  document.getElementById('tabBar').innerHTML = docBtn + pageBtns;
+}
+
+function buildDOM() {
+  const canvas = document.getElementById('canvas');
+  canvas.querySelectorAll('.anno-box,.line-dot,.page-indicator').forEach(el => el.remove());
+  document.getElementById('lineSvg').innerHTML = '';
+  const page = getPage();
+  if (!page) return;
+
+  const ind = document.createElement('div');
+  ind.className = 'page-indicator';
+  ind.innerHTML = `<h2>${page.label}</h2><p>${page.desc}</p>`;
+  canvas.appendChild(ind);
+
+  page.items.forEach(item => {
+    const srcClass = item.src === 'doc' ? 'src-doc' : item.src === 'diff' ? 'src-diff' : item.src === 'extra' ? 'src-code' : 'src-code';
+    const srcLabel = item.src === 'doc' ? 'PRD' : item.src === 'code' ? '代码' : item.src === 'diff' ? '差异' : '补充';
+    const srcTagClass = item.src === 'doc' ? 'doc' : item.src === 'code' ? 'code' : item.src === 'diff' ? 'diff' : 'extra';
+
+    // Box
+    const box = document.createElement('div');
+    box.className = `anno-box ${srcClass}`;
+    box.id = 'box_' + item.id;
+    box.dataset.itemId = item.id;
+    box.style.left = item.tx + 'px';
+    box.style.top = item.ty + 'px';
+    box.innerHTML = `<div class="drag-handle" data-drag="box" data-item="${item.id}"></div>
+      <span class="src-tag ${srcTagClass}">${srcLabel}</span>
+      <div class="move-controls"><button class="move-btn" data-dir="up" data-target="box_${item.id}">&#8593;</button><button class="move-btn" data-dir="down" data-target="box_${item.id}">&#8595;</button><button class="move-btn" data-dir="left" data-target="box_${item.id}">&#8592;</button><button class="move-btn" data-dir="right" data-target="box_${item.id}">&#8594;</button></div>
+      <div class="anno-title" contenteditable="true" spellcheck="false">${item.title}</div>
+      <div class="anno-desc" contenteditable="true" spellcheck="false">${item.desc.replace(/\n/g, '<br>')}</div>`;
+    canvas.appendChild(box);
+
+    // Dot
+    const dot = document.createElement('div');
+    dot.className = 'line-dot';
+    dot.id = 'dot_' + item.id;
+    dot.dataset.itemId = item.id;
+    dot.dataset.drag = 'dot';
+    dot.dataset.item = item.id;
+    dot.style.left = (item.px - 5) + 'px';
+    dot.style.top = (item.py - 5) + 'px';
+    dot.innerHTML = `<div class="move-controls"><button class="move-btn" data-dir="up" data-target="dot_${item.id}">&#8593;</button><button class="move-btn" data-dir="down" data-target="dot_${item.id}">&#8595;</button><button class="move-btn" data-dir="left" data-target="dot_${item.id}">&#8592;</button><button class="move-btn" data-dir="right" data-target="dot_${item.id}">&#8594;</button></div>`;
+    canvas.appendChild(dot);
+
+    // SVG line
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    line.id = 'line_' + item.id;
+    line.setAttribute('stroke', '#999');
+    line.setAttribute('stroke-width', '1');
+    line.setAttribute('stroke-dasharray', '4,3');
+    document.getElementById('lineSvg').appendChild(line);
+  });
+
+  updateSelection();
+  updateAllLines();
+}
+
+function updateSelection() {
+  const page = getPage();
+  if (!page) return;
+  page.items.forEach(item => {
+    const box = document.getElementById('box_' + item.id);
+    const dot = document.getElementById('dot_' + item.id);
+    const line = document.getElementById('line_' + item.id);
+    if (!box || !dot || !line) return;
+    const s = selectedId === item.id;
+    box.classList.toggle('selected', s);
+    dot.classList.toggle('selected', s);
+    line.setAttribute('stroke', s ? '#1677ff' : '#999');
+    line.setAttribute('stroke-width', s ? '2' : '1');
+    line.setAttribute('stroke-dasharray', s ? 'none' : '4,3');
+  });
+}
+
+function updateLine(id) {
+  const box = document.getElementById('box_' + id), dot = document.getElementById('dot_' + id), line = document.getElementById('line_' + id);
+  if (!box || !dot || !line) return;
+  const bx = parseFloat(box.style.left) || 0, by = parseFloat(box.style.top) || 0, bw = box.offsetWidth, bh = box.offsetHeight;
+  const dx = (parseFloat(dot.style.left) || 0) + 5, dy = (parseFloat(dot.style.top) || 0) + 5;
+  let sx, sy;
+  if (dx > bx + bw) { sx = bx + bw; sy = Math.min(Math.max(dy, by), by + bh); }
+  else if (dx < bx) { sx = bx; sy = Math.min(Math.max(dy, by), by + bh); }
+  else if (dy > by + bh) { sx = Math.min(Math.max(dx, bx), bx + bw); sy = by + bh; }
+  else { sx = Math.min(Math.max(dx, bx), bx + bw); sy = by; }
+  line.setAttribute('x1', sx); line.setAttribute('y1', sy); line.setAttribute('x2', dx); line.setAttribute('y2', dy);
+}
+
+function updateAllLines() { getPage()?.items.forEach(item => updateLine(item.id)); }
+
+// ===================== DRAG (scale-compensated) =====================
+function onPointerDown(e) {
+  const moveBtn = e.target.closest('.move-btn');
+  if (moveBtn) {
+    e.preventDefault(); e.stopPropagation();
+    const dir = moveBtn.dataset.dir, tid = moveBtn.dataset.target, el = document.getElementById(tid);
+    if (!el) return;
+    let l = parseFloat(el.style.left) || 0, t = parseFloat(el.style.top) || 0;
+    if (dir === 'up') t -= 10; if (dir === 'down') t += 10;
+    if (dir === 'left') l -= 10; if (dir === 'right') l += 10;
+    el.style.left = Math.max(0, l) + 'px'; el.style.top = Math.max(0, t) + 'px';
+    const idPart = tid.replace(/^(box_|dot_)/, '');
+    updateLine(idPart);
+    return;
+  }
+  if (e.target.isContentEditable) return;
+  const handle = e.target.closest('[data-drag="box"]');
+  if (handle) { e.preventDefault(); const id = handle.dataset.item; startDrag(document.getElementById('box_' + id), 'box', id, e); setSelected(id); return; }
+  const dot = e.target.closest('[data-drag="dot"]');
+  if (dot) { e.preventDefault(); const id = dot.dataset.item; startDrag(dot, 'dot', id, e); setSelected(id); return; }
+  const annoBox = e.target.closest('.anno-box');
+  if (annoBox) { setSelected(annoBox.dataset.itemId); return; }
+  if (!e.target.closest('.anno-box') && !e.target.closest('.line-dot') && !e.target.closest('.tab-btn')) setSelected(null);
+}
+
+function startDrag(el, type, id, e) {
+  isDragging = true; dragEl = el; dragType = type; dragItemId = id;
+  startMouseX = e.clientX; startMouseY = e.clientY;
+  startElX = parseFloat(el.style.left) || 0; startElY = parseFloat(el.style.top) || 0;
+  document.body.style.cursor = 'move'; document.body.style.userSelect = 'none';
+}
+
+function onPointerMove(e) {
+  if (!isDragging || !dragEl) return;
+  if (rafId) cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(() => {
+    // Divide mouse delta by scale to convert screen pixels to canvas pixels
+    const nx = Math.max(0, startElX + (e.clientX - startMouseX) / currentScale);
+    const ny = Math.max(0, startElY + (e.clientY - startMouseY) / currentScale);
+    dragEl.style.left = nx + 'px'; dragEl.style.top = ny + 'px';
+    updateLine(dragItemId);
+  });
+}
+
+function onPointerUp() {
+  if (isDragging) {
+    isDragging = false; dragEl = null;
+    document.body.style.cursor = ''; document.body.style.userSelect = '';
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+  }
+}
+
+function setSelected(id) { if (selectedId === id) return; selectedId = id; updateSelection(); }
+
+document.addEventListener('mousedown', onPointerDown);
+document.addEventListener('mousemove', onPointerMove);
+document.addEventListener('mouseup', onPointerUp);
+document.getElementById('tabBar').addEventListener('click', e => {
+  const btn = e.target.closest('.tab-btn');
+  if (!btn) return;
+  const pageKey = btn.dataset.page;
+  if (pageKey === '__doc__') {
+    showingDoc = true;
+    document.getElementById('scaleWrapper').style.display = 'none';
+    document.getElementById('docContainer').style.display = 'block';
+    renderTabs();
+    renderDoc();
+    return;
+  }
+  showingDoc = false;
+  document.getElementById('docContainer').style.display = 'none';
+  document.getElementById('scaleWrapper').style.display = '';
+  currentPage = pageKey; selectedId = null;
+  renderTabs(); buildDOM(); fitToScreen();
+  navigateIframe(currentPage);
+});
+
+// ===================== IFRAME AUTO-NAVIGATION (postMessage) =====================
+const NAV_CONFIG = {
+  strategies:        { msgs: [{ action:'setPage', payload:'strategies' }], hint:'' },
+  pools:             { msgs: [{ action:'setPage', payload:'pools' }], hint:'' },
+  pool_drawer_rule:  { msgs: [{ action:'openPDrawer', payload:'rule' }], hint:'请在原型中：点击左侧"内容池" → 点击任一规则型池的"编辑"' },
+  pool_drawer_manual:{ msgs: [{ action:'openPDrawer', payload:'manual' }], hint:'请在原型中：点击左侧"内容池" → 点击任一人工型池的"编辑"' },
+  strategy_drawer:   { msgs: [{ action:'openSDrawer' }], hint:'请在原型中：点击左侧"策略列表" → 点击任一策略的"编辑"' },
+  blocklist:         { msgs: [{ action:'setPage', payload:'blocklist' }], hint:'' },
+  mapping:           { msgs: [{ action:'setPage', payload:'mapping' }], hint:'' },
+  tools:             { msgs: [{ action:'setPage', payload:'tools' }], hint:'' },
+  content_modal:     { msgs: [{ action:'openContentModal' }], hint:'请在原型中：点击左侧"内容池" → 点击任一池的"查看内容"' },
+};
+
+function navigateIframe(pageKey) {
+  const cfg = NAV_CONFIG[pageKey];
+  if (!cfg) return;
+  const guide = document.getElementById('navGuide');
+  const iframe = document.querySelector('iframe');
+
+  try {
+    for (const msg of cfg.msgs) {
+      iframe.contentWindow.postMessage({ source: 'annotation-nav', ...msg }, '*');
+    }
+    guide.className = 'nav-guide ok';
+    guide.textContent = '已自动切换到对应视图';
+    setTimeout(() => { guide.className = 'nav-guide'; guide.textContent = ''; }, 2000);
+  } catch (e) {
+    // postMessage failed — show fallback hint
+    if (cfg.hint) {
+      guide.className = 'nav-guide fail';
+      guide.textContent = cfg.hint;
+    }
+  }
+}
+
+// ===================== DOC RENDERING =====================
+let docRendered = false;
+function renderDoc() {
+  if (docRendered) return;
+  const renderer = new marked.Renderer();
+  // marked v5+ passes { text, lang } object; older versions pass (code, lang)
+  renderer.code = function(codeOrObj, langArg) {
+    let text, lang;
+    if (typeof codeOrObj === 'object' && codeOrObj !== null) {
+      text = codeOrObj.text; lang = codeOrObj.lang;
+    } else {
+      text = codeOrObj; lang = langArg;
+    }
+    if (lang === 'mermaid') {
+      return '<div class="mermaid">' + text + '</div>';
+    }
+    const escaped = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    return '<pre><code>' + escaped + '</code></pre>';
+  };
+  marked.setOptions({ renderer, breaks: false, gfm: true });
+  document.getElementById('docContainer').innerHTML = marked.parse(PRD_MD);
+  mermaid.run({ nodes: document.querySelectorAll('#docContainer .mermaid') });
+  docRendered = true;
+}
+
+// ===================== INIT =====================
+renderTabs();
+buildDOM();
+fitToScreen();
+// Navigate iframe to first page after iframe loads
+document.querySelector('iframe').addEventListener('load', () => navigateIframe(currentPage), { once: true });
+</script>
+</body>
+</html>
