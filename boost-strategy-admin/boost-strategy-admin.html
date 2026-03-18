@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>内容提权策略运营后台 v2.0</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/antd@5.15.0/dist/reset.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/locale/zh-cn.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/antd@5.15.0/dist/antd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.23.9/babel.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body, #root { height: 100%; }
+  .stat-card { text-align: center; }
+  .stat-card .value { font-size: 28px; font-weight: 700; line-height: 1.2; }
+  .stat-card .label { color: #666; font-size: 13px; margin-top: 4px; }
+  .rule-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .content-cover { width: 60px; height: 60px; background: #f5f5f5; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: #bbb; font-size: 11px; flex-shrink: 0; }
+  .emergency-section { background: #fff2f0; border: 1px solid #ffccc7; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+  .emergency-section > h4 { color: #cf1322; margin-bottom: 16px; font-size: 16px; }
+  .logo-area { height: 56px; display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 15px; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+  .header-bar { background: #fff; height: 56px; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #f0f0f0; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo, useCallback, useEffect, useRef } = React;
+const {
+  Layout, Menu, Card, Table, Button, Space, Tag, Input, Select, InputNumber,
+  Drawer, Form, Modal, Tabs, Switch, DatePicker, Upload, Popconfirm, message,
+  Row, Col, Badge, Typography, Divider, Alert, Radio, Tooltip, Statistic
+} = antd;
+const { Header, Sider, Content } = Layout;
+const { RangePicker } = DatePicker;
+const { TextArea } = Input;
+const { Title, Text, Paragraph } = Typography;
+
+dayjs.locale('zh-cn');
+
+// ======================== Constants ========================
+const BOOST_LEVELS = ['S+', 'S', 'A+', 'A', 'B+', 'B', 'C+', 'C', 'D'];
+
+const STATUS_MAP = {
+  active: { text: '生效中', color: 'green', badge: 'success' },
+  draft: { text: '草稿', color: 'default', badge: 'default' },
+  expired: { text: '已过期', color: 'orange', badge: 'warning' },
+  disabled: { text: '已停用', color: 'red', badge: 'error' },
+};
+
+const LEVEL_COLORS = { 'S+': 'red', 'S': 'red', 'A+': 'volcano', 'A': 'orange', 'B+': 'blue', 'B': 'blue', 'C+': 'cyan', 'C': 'cyan', 'D': 'default' };
+
+const RULE_FIELDS = [
+  { value: 'topic', label: '话题' },
+  { value: 'tag', label: '标签' },
+  { value: 'section', label: '板块' },
+  { value: 'author_id', label: '作者ID' },
+  { value: 'is_verified', label: '是否认证' },
+  { value: 'publish_time', label: '发布时间' },
+];
+
+const RULE_OPERATORS = [
+  { value: 'eq', label: '等于' },
+  { value: 'neq', label: '不等于' },
+  { value: 'contains', label: '包含' },
+  { value: 'in', label: '在列表中' },
+  { value: 'gt', label: '大于' },
+  { value: 'lt', label: '小于' },
+  { value: 'between', label: '区间' },
+  { value: 'last_n_days', label: '最近N天' },
+];
+
+const MAPPING_DATA = [
+  { level: 'S+', boost_tag: 'boost_sp', volcano_coeff: 3.00, scenario: '顶级热点 / 平台战略活动' },
+  { level: 'S+', boost_tag: 'boost_sp_lite', volcano_coeff: 2.80, scenario: '顶级热点（轻量）' },
+  { level: 'S', boost_tag: 'boost_s', volcano_coeff: 2.50, scenario: '重大热点 / 品牌活动' },
+  { level: 'S', boost_tag: 'boost_s_lite', volcano_coeff: 2.30, scenario: '重大热点（轻量）' },
+  { level: 'A+', boost_tag: 'boost_ap', volcano_coeff: 2.00, scenario: '高优运营活动' },
+  { level: 'A+', boost_tag: 'boost_ap_lite', volcano_coeff: 1.80, scenario: '高优运营（轻量）' },
+  { level: 'A', boost_tag: 'boost_a', volcano_coeff: 1.60, scenario: '常规运营活动' },
+  { level: 'A', boost_tag: 'boost_a_lite', volcano_coeff: 1.50, scenario: '常规运营（轻量）' },
+  { level: 'B+', boost_tag: 'boost_bp', volcano_coeff: 1.40, scenario: '优质内容扶持' },
+  { level: 'B+', boost_tag: 'boost_bp_lite', volcano_coeff: 1.30, scenario: '优质内容（轻量）' },
+  { level: 'B', boost_tag: 'boost_b', volcano_coeff: 1.20, scenario: '普通内容扶持' },
+  { level: 'B', boost_tag: 'boost_b_lite', volcano_coeff: 1.15, scenario: '普通内容（轻量）' },
+  { level: 'C+', boost_tag: 'boost_cp', volcano_coeff: 1.10, scenario: '轻度提权' },
+  { level: 'C+', boost_tag: 'boost_cp_lite', volcano_coeff: 1.08, scenario: '轻度提权（轻量）' },
+  { level: 'C', boost_tag: 'boost_c', volcano_coeff: 1.05, scenario: '微量提权' },
+  { level: 'C', boost_tag: 'boost_c_lite', volcano_coeff: 1.03, scenario: '微量提权（轻量）' },
+  { level: 'D', boost_tag: 'boost_d', volcano_coeff: 1.01, scenario: '观测组 / AB实验' },
+  { level: 'D', boost_tag: 'boost_d_lite', volcano_coeff: 1.00, scenario: '基准对照组' },
+];
+
+// ======================== Mock Data Generators ========================
+const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+let _sid = 100, _pid = 100;
+
+const INIT_STRATEGIES = [
+  { id: 1, name: '春季活动提权', level: 'S', priority: 90, status: 'active', poolIds: [1, 2], effectType: 'scheduled', startTime: '2026-03-01 00:00', endTime: '2026-04-01 00:00' },
+  { id: 2, name: '优质创作者扶持', level: 'A', priority: 70, status: 'active', poolIds: [3], effectType: 'permanent', startTime: null, endTime: null },
+  { id: 3, name: '热点事件追踪', level: 'S+', priority: 95, status: 'draft', poolIds: [], effectType: 'immediate', startTime: null, endTime: null },
+  { id: 4, name: '新用户内容冷启', level: 'B+', priority: 50, status: 'expired', poolIds: [4], effectType: 'scheduled', startTime: '2026-01-01 00:00', endTime: '2026-02-01 00:00' },
+  { id: 5, name: '旧活动清理', level: 'C', priority: 30, status: 'disabled', poolIds: [], effectType: 'immediate', startTime: null, endTime: null },
+  { id: 6, name: '周末话题加权', level: 'B', priority: 40, status: 'active', poolIds: [5], effectType: 'permanent', startTime: null, endTime: null },
+];
+
+const INIT_POOLS = [
+  { id: 1, name: '春季话题内容池', type: 'rule', contentCount: 1280, strategyId: 1, ttl: '7天', createdAt: '2026-02-20 10:00', rules: [{ field: 'topic', operator: 'contains', value: '春季' }], blacklistPids: '', blacklistUids: '' },
+  { id: 2, name: '精选标签池', type: 'rule', contentCount: 560, strategyId: 1, ttl: '14天', createdAt: '2026-02-22 14:30', rules: [{ field: 'tag', operator: 'in', value: '精选,推荐' }], blacklistPids: '', blacklistUids: '' },
+  { id: 3, name: '认证作者池', type: 'rule', contentCount: 3200, strategyId: 2, ttl: '30天', createdAt: '2026-01-15 09:00', rules: [{ field: 'is_verified', operator: 'eq', value: '是' }], blacklistPids: '', blacklistUids: '' },
+  { id: 4, name: '手动导入池A', type: 'manual', contentCount: 150, strategyId: 4, ttl: '永久', createdAt: '2025-12-30 11:00', rules: [], blacklistPids: '', blacklistUids: '', importMode: 'incremental' },
+  { id: 5, name: '周末热门池', type: 'rule', contentCount: 420, strategyId: 6, ttl: '3天', createdAt: '2026-03-10 08:00', rules: [{ field: 'publish_time', operator: 'last_n_days', value: '3' }], blacklistPids: '', blacklistUids: '' },
+  { id: 6, name: '空闲内容池', type: 'manual', contentCount: 0, strategyId: null, ttl: '7天', createdAt: '2026-03-12 16:00', rules: [], blacklistPids: '', blacklistUids: '', importMode: 'full' },
+];
+
+const INIT_BLOCKLIST = {
+  pids: [
+    { id: 'PID_100001', addedAt: '2026-03-10 09:00', operator: '张三', reason: '违规内容' },
+    { id: 'PID_100002', addedAt: '2026-03-11 14:20', operator: '李四', reason: '低质灌水' },
+    { id: 'PID_100003', addedAt: '2026-03-12 11:00', operator: '张三', reason: '重复内容' },
+  ],
+  uids: [
+    { id: 'UID_200001', addedAt: '2026-03-08 10:00', operator: '王五', reason: '批量发布垃圾内容' },
+    { id: 'UID_200002', addedAt: '2026-03-09 16:30', operator: '李四', reason: '恶意刷量' },
+  ],
+};
+
+const INIT_LOGS = [
+  { id: 1, time: '2026-03-17 10:30', operator: '系统', type: '全量重算', target: '-', detail: '触发全量重算，耗时 12s，影响 15,328 条' },
+  { id: 2, time: '2026-03-16 18:00', operator: '张三', type: '策略变更', target: '春季活动提权', detail: '状态变更：草稿 → 生效中' },
+  { id: 3, time: '2026-03-15 09:20', operator: '李四', type: '屏蔽', target: 'PID_100001', detail: '添加至全局屏蔽池，原因：违规内容' },
+  { id: 4, time: '2026-03-14 14:00', operator: '王五', type: '内容池变更', target: '认证作者池', detail: '更新规则条件：is_verified = 是' },
+  { id: 5, time: '2026-03-13 11:45', operator: '张三', type: '紧急止血', target: '-', detail: 'Level 1: 暂停同步下发' },
+  { id: 6, time: '2026-03-12 15:00', operator: '系统', type: '策略变更', target: '新用户内容冷启', detail: '策略到期，自动标记为已过期' },
+];
+
+const MOCK_CONTENTS = Array.from({ length: 30 }, (_, i) => ({
+  id: `PID_${300000 + i}`,
+  title: ['春日好去处推荐', '如何提升写作能力', '2026年科技趋势盘点', '美食探店日记', '健身打卡第30天', '旅行攻略分享', '读书笔记：人类简史', '摄影技巧入门指南'][i % 8] + (i > 7 ? ` (${i})` : ''),
+  author: ['小明', '大白', '阿花', '老王', '小美', '大力', '小红', '阿杰'][i % 8],
+  authorId: `UID_${400000 + (i % 8)}`,
+  topic: ['春季活动', '学习成长', '科技', '美食', '健身', '旅行', '读书', '摄影'][i % 8],
+  tags: [['精选', '推荐'], ['干货', '教程'], ['科技', '趋势'], ['美食', '探店'], ['健身', '打卡'], ['旅行', '攻略'], ['读书', '笔记'], ['摄影', '入门']][i % 8],
+  reads: rand(500, 50000),
+  likes: rand(10, 5000),
+  comments: rand(0, 800),
+}));
+
+// ======================== Sub-Components ========================
+
+// --- Content View Modal ---
+function ContentViewModal({ open, pool, onClose }) {
+  const [search, setSearch] = useState('');
+  const filtered = useMemo(() => {
+    if (!search) return MOCK_CONTENTS;
+    const s = search.toLowerCase();
+    return MOCK_CONTENTS.filter(c =>
+      c.id.toLowerCase().includes(s) || c.authorId.toLowerCase().includes(s) ||
+      c.title.includes(search) || c.author.includes(search)
+    );
+  }, [search]);
+
+  const columns = [
+    { title: '封面', key: 'cover', width: 70, render: () => React.createElement('div', { className: 'content-cover' }, 'IMG') },
+    { title: '标题', dataIndex: 'title', key: 'title', width: 220, ellipsis: true },
+    { title: '作者', dataIndex: 'author', key: 'author', width: 70 },
+    { title: '话题/标签', key: 'tags', width: 200, render: (_, r) => React.createElement(React.Fragment, null,
+      React.createElement(Tag, null, r.topic),
+      r.tags.map(t => React.createElement(Tag, { key: t, color: 'blue' }, t))
+    )},
+    { title: '阅读', dataIndex: 'reads', key: 'reads', width: 80, sorter: (a, b) => a.reads - b.reads, render: v => v.toLocaleString() },
+    { title: '点赞', dataIndex: 'likes', key: 'likes', width: 70, render: v => v.toLocaleString() },
+    { title: '评论', dataIndex: 'comments', key: 'comments', width: 70, render: v => v.toLocaleString() },
+  ];
+
+  return React.createElement(Modal, {
+    title: `内容查看 — ${pool?.name || ''}`,
+    open, onCancel: onClose, footer: null, width: 960, destroyOnClose: true
+  },
+    React.createElement(Space, { style: { marginBottom: 12, width: '100%' }, wrap: true },
+      React.createElement(Input.Search, { placeholder: '搜索 PID / UID / 标题 / 作者名', allowClear: true, style: { width: 320 }, onSearch: setSearch, onChange: e => { if (!e.target.value) setSearch(''); } }),
+      React.createElement(Tag, { color: 'blue' }, `共 ${filtered.length} 条内容`)
+    ),
+    React.createElement(Table, { dataSource: filtered, columns, rowKey: 'id', size: 'small', pagination: { pageSize: 8 }, scroll: { y: 420 } })
+  );
+}
+
+// --- Blocklist Add Modal ---
+function BlocklistAddModal({ open, type, onClose, onAdd }) {
+  const [form] = Form.useForm();
+  const handleOk = () => {
+    form.validateFields().then(values => {
+      const ids = values.ids.split(/[\n,;]+/).map(s => s.trim()).filter(Boolean);
+      onAdd(ids, values.reason || '手动添加');
+      form.resetFields();
+      onClose();
+    });
+  };
+  return React.createElement(Modal, {
+    title: `批量添加${type === 'pids' ? '屏蔽内容 ID' : '屏蔽作者 ID'}`,
+    open, onCancel: onClose, onOk: handleOk, destroyOnClose: true
+  },
+    React.createElement(Form, { form, layout: 'vertical' },
+      React.createElement(Form.Item, { name: 'ids', label: 'ID 列表（逗号、分号或换行分隔）', rules: [{ required: true, message: '请输入至少一个 ID' }] },
+        React.createElement(TextArea, { rows: 4, placeholder: type === 'pids' ? 'PID_100010\nPID_100011\nPID_100012' : 'UID_200010\nUID_200011' })
+      ),
+      React.createElement(Form.Item, { name: 'reason', label: '操作原因' },
+        React.createElement(Input, { placeholder: '如：违规内容、投诉处理' })
+      )
+    )
+  );
+}
+
+// ======================== Main App ========================
+function App() {
+  const [page, setPage] = useState('strategies');
+  const [strategies, setStrategies] = useState(INIT_STRATEGIES);
+  const [pools, setPools] = useState(INIT_POOLS);
+  const [blocklist, setBlocklist] = useState(INIT_BLOCKLIST);
+  const [logs, setLogs] = useState(INIT_LOGS);
+  const [syncPaused, setSyncPaused] = useState(false);
+
+  // Strategy
+  const [sDrawerOpen, setSDrawerOpen] = useState(false);
+  const [editingS, setEditingS] = useState(null);
+  const [sForm] = Form.useForm();
+  const [sFilters, setSFilters] = useState({ name: '', status: null, level: null });
+
+  // Pool
+  const [pDrawerOpen, setPDrawerOpen] = useState(false);
+  const [editingP, setEditingP] = useState(null);
+  const [pForm] = Form.useForm();
+  const [pFilters, setPFilters] = useState({ name: '', type: null });
+
+  // Content modal
+  const [contentModalOpen, setContentModalOpen] = useState(false);
+  const [contentModalPool, setContentModalPool] = useState(null);
+
+  // Blocklist add
+  const [blockAddOpen, setBlockAddOpen] = useState(false);
+  const [blockAddType, setBlockAddType] = useState('pids');
+
+  // -------- Annotation postMessage bridge --------
+  useEffect(() => {
+    const handler = (e) => {
+      if (!e.data || e.data.source !== 'annotation-nav') return;
+      const { action, payload } = e.data;
+      // Close all drawers/modals first
+      setSDrawerOpen(false); setPDrawerOpen(false); setContentModalOpen(false); setBlockAddOpen(false);
+      if (action === 'setPage') setPage(payload);
+      if (action === 'openSDrawer') {
+        setPage('strategies');
+        setTimeout(() => { setEditingS(null); sForm.resetFields(); sForm.setFieldsValue({ effectType: 'immediate', priority: 50 }); setSDrawerOpen(true); }, 200);
+      }
+      if (action === 'openPDrawer') {
+        setPage('pools');
+        const target = pools.find(p => p.type === (payload || 'rule')) || pools[0];
+        setTimeout(() => {
+          setEditingP(target);
+          pForm.setFieldsValue({ name: target.name, type: target.type, ttl: target.ttl, rules: target.rules?.length ? target.rules : [{ field: 'topic', operator: 'contains', value: '' }], blacklistPids: target.blacklistPids || '', blacklistUids: target.blacklistUids || '', importMode: target.importMode || 'incremental' });
+          setPDrawerOpen(true);
+        }, 200);
+      }
+      if (action === 'openContentModal') {
+        setPage('pools');
+        setTimeout(() => { setContentModalPool(pools[0]); setContentModalOpen(true); }, 200);
+      }
+      if (action === 'openBlockAdd') {
+        setPage('blocklist');
+        setTimeout(() => { setBlockAddType(payload || 'pids'); setBlockAddOpen(true); }, 200);
+      }
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [pools, sForm, pForm]);
+
+  // -------- Strategy helpers --------
+  const openSDrawer = useCallback((record) => {
+    setEditingS(record);
+    if (record) {
+      sForm.setFieldsValue({
+        name: record.name,
+        level: record.level,
+        priority: record.priority,
+        effectType: record.effectType,
+        timeRange: record.startTime && record.endTime ? [dayjs(record.startTime), dayjs(record.endTime)] : undefined,
+        poolIds: record.poolIds,
+      });
+    } else {
+      sForm.resetFields();
+      sForm.setFieldsValue({ effectType: 'immediate', priority: 50 });
+    }
+    setSDrawerOpen(true);
+  }, [sForm]);
+
+  const saveStrategy = useCallback(() => {
+    sForm.validateFields().then(values => {
+      const { timeRange, ...rest } = values;
+      const data = {
+        ...rest,
+        poolIds: rest.poolIds || [],
+        startTime: values.effectType === 'scheduled' && timeRange ? timeRange[0].format('YYYY-MM-DD HH:mm') : null,
+        endTime: values.effectType === 'scheduled' && timeRange ? timeRange[1].format('YYYY-MM-DD HH:mm') : null,
+      };
+      if (editingS) {
+        setStrategies(prev => prev.map(s => s.id === editingS.id ? { ...s, ...data } : s));
+        message.success('策略已更新');
+      } else {
+        setStrategies(prev => [...prev, { ...data, id: ++_sid, status: 'draft' }]);
+        message.success('策略已创建');
+      }
+      setSDrawerOpen(false);
+    });
+  }, [sForm, editingS]);
+
+  const toggleStrategy = useCallback((record) => {
+    const next = record.status === 'active' ? 'disabled' : 'active';
+    setStrategies(prev => prev.map(s => s.id === record.id ? { ...s, status: next } : s));
+    message.success(next === 'active' ? '已启用' : '已停用');
+    setLogs(prev => [{ id: Date.now(), time: dayjs().format('YYYY-MM-DD HH:mm'), operator: 'wilkins', type: '策略变更', target: record.name, detail: `状态变更为：${STATUS_MAP[next].text}` }, ...prev]);
+  }, []);
+
+  const copyStrategy = useCallback((record) => {
+    const copied = { ...record, id: ++_sid, name: record.name + ' (副本)', status: 'draft', poolIds: [] };
+    setStrategies(prev => [...prev, copied]);
+    message.success('已复制');
+  }, []);
+
+  const deleteStrategy = useCallback((id) => {
+    setStrategies(prev => prev.filter(s => s.id !== id));
+    message.success('已删除');
+  }, []);
+
+  // -------- Pool helpers --------
+  const openPDrawer = useCallback((record) => {
+    setEditingP(record);
+    if (record) {
+      pForm.setFieldsValue({
+        name: record.name,
+        type: record.type,
+        ttl: record.ttl,
+        rules: record.rules?.length ? record.rules : [{ field: 'topic', operator: 'contains', value: '' }],
+        blacklistPids: record.blacklistPids || '',
+        blacklistUids: record.blacklistUids || '',
+        importMode: record.importMode || 'incremental',
+        importIds: '',
+      });
+    } else {
+      pForm.resetFields();
+      pForm.setFieldsValue({
+        type: 'rule', ttl: '7天',
+        rules: [{ field: 'topic', operator: 'contains', value: '' }],
+        importMode: 'incremental',
+      });
+    }
+    setPDrawerOpen(true);
+  }, [pForm]);
+
+  const savePool = useCallback(() => {
+    pForm.validateFields().then(values => {
+      if (editingP) {
+        setPools(prev => prev.map(p => p.id === editingP.id ? { ...p, ...values } : p));
+        message.success('内容池已更新');
+      } else {
+        setPools(prev => [...prev, { ...values, id: ++_pid, contentCount: 0, strategyId: null, createdAt: dayjs().format('YYYY-MM-DD HH:mm') }]);
+        message.success('内容池已创建');
+      }
+      setPDrawerOpen(false);
+    });
+  }, [pForm, editingP]);
+
+  const deletePool = useCallback((id) => {
+    setPools(prev => prev.filter(p => p.id !== id));
+    setStrategies(prev => prev.map(s => ({ ...s, poolIds: s.poolIds.filter(pid => pid !== id) })));
+    message.success('已删除');
+  }, []);
+
+  const copyPool = useCallback((record) => {
+    setPools(prev => [...prev, { ...record, id: ++_pid, name: record.name + ' (副本)', strategyId: null, createdAt: dayjs().format('YYYY-MM-DD HH:mm') }]);
+    message.success('已复制');
+  }, []);
+
+  // -------- Blocklist helpers --------
+  const addBlockItems = useCallback((ids, reason) => {
+    const items = ids.map(id => ({ id, addedAt: dayjs().format('YYYY-MM-DD HH:mm'), operator: 'wilkins', reason }));
+    setBlocklist(prev => ({ ...prev, [blockAddType]: [...prev[blockAddType], ...items] }));
+    message.success(`已添加 ${ids.length} 条`);
+    setLogs(prev => [{ id: Date.now(), time: dayjs().format('YYYY-MM-DD HH:mm'), operator: 'wilkins', type: '屏蔽', target: ids.join(', '), detail: `批量添加 ${ids.length} 条至全局屏蔽池` }, ...prev]);
+  }, [blockAddType]);
+
+  const removeBlockItem = useCallback((type, id) => {
+    setBlocklist(prev => ({ ...prev, [type]: prev[type].filter(item => item.id !== id) }));
+    message.success('已移除');
+  }, []);
+
+  // -------- System tool helpers --------
+  const handleRecalculate = useCallback(() => {
+    message.loading({ content: '全量重算中...', key: 'recalc', duration: 2.5 });
+    setTimeout(() => {
+      message.success({ content: '全量重算完成！影响 15,328 条内容', key: 'recalc' });
+      setLogs(prev => [{ id: Date.now(), time: dayjs().format('YYYY-MM-DD HH:mm'), operator: 'wilkins', type: '全量重算', target: '-', detail: '触发全量重算，耗时 8s，影响 15,328 条' }, ...prev]);
+    }, 2500);
+  }, []);
+
+  const handleZeroOut = useCallback(() => {
+    setStrategies(prev => prev.map(s => ({ ...s, status: 'disabled' })));
+    message.warning('已执行全量归零，所有策略已停用');
+    setLogs(prev => [{ id: Date.now(), time: dayjs().format('YYYY-MM-DD HH:mm'), operator: 'wilkins', type: '紧急止血', target: '-', detail: 'Level 2: 全量归零，所有 boost 系数清零' }, ...prev]);
+  }, []);
+
+  // -------- Derived data --------
+  const getPoolName = (id) => pools.find(p => p.id === id)?.name || `池#${id}`;
+  const getStrategyName = (id) => strategies.find(s => s.id === id)?.name || '-';
+
+  const unboundPoolOptions = useMemo(() => {
+    const boundIds = new Set();
+    strategies.forEach(s => {
+      if (editingS && s.id === editingS.id) return;
+      s.poolIds.forEach(pid => boundIds.add(pid));
+    });
+    return pools.filter(p => !boundIds.has(p.id)).map(p => ({ value: p.id, label: p.name }));
+  }, [pools, strategies, editingS]);
+
+  const filteredStrategies = useMemo(() => strategies.filter(s => {
+    if (sFilters.name && !s.name.includes(sFilters.name)) return false;
+    if (sFilters.status && s.status !== sFilters.status) return false;
+    if (sFilters.level && s.level !== sFilters.level) return false;
+    return true;
+  }), [strategies, sFilters]);
+
+  const filteredPools = useMemo(() => pools.filter(p => {
+    if (pFilters.name && !p.name.includes(pFilters.name)) return false;
+    if (pFilters.type && p.type !== pFilters.type) return false;
+    return true;
+  }), [pools, pFilters]);
+
+  const counts = useMemo(() => ({
+    total: strategies.length,
+    active: strategies.filter(s => s.status === 'active').length,
+    draft: strategies.filter(s => s.status === 'draft').length,
+    expired: strategies.filter(s => s.status === 'expired').length,
+    disabled: strategies.filter(s => s.status === 'disabled').length,
+  }), [strategies]);
+
+  // ================================================================
+  // Page Renderers
+  // ================================================================
+
+  // ---- 1. Strategy List ----
+  const renderStrategies = () => {
+    const columns = [
+      { title: '策略名称', dataIndex: 'name', key: 'name', width: 180, render: (t, r) => React.createElement('a', { onClick: () => openSDrawer(r) }, t) },
+      { title: '提权等级', dataIndex: 'level', key: 'level', width: 90, render: l => React.createElement(Tag, { color: LEVEL_COLORS[l] || 'default' }, l) },
+      { title: '优先级', dataIndex: 'priority', key: 'priority', width: 80, sorter: (a, b) => a.priority - b.priority },
+      { title: '状态', dataIndex: 'status', key: 'status', width: 90, render: s => React.createElement(Badge, { status: STATUS_MAP[s].badge, text: STATUS_MAP[s].text }) },
+      { title: '关联内容池', dataIndex: 'poolIds', key: 'pools', width: 200, render: ids => ids.length ? ids.map(id => React.createElement(Tag, { key: id }, getPoolName(id))) : React.createElement(Text, { type: 'secondary' }, '未关联') },
+      { title: '生效时间', key: 'effect', width: 200, render: (_, r) => {
+        if (r.effectType === 'immediate') return React.createElement(Tag, null, '立即生效');
+        if (r.effectType === 'permanent') return React.createElement(Tag, { color: 'blue' }, '永久');
+        return React.createElement(Text, { style: { fontSize: 12 } }, `${r.startTime || ''} ~ ${r.endTime || ''}`);
+      }},
+      { title: '操作', key: 'action', width: 230, fixed: 'right', render: (_, record) => React.createElement(Space, { size: 'small' },
+        React.createElement(Button, { type: 'link', size: 'small', onClick: () => toggleStrategy(record) }, record.status === 'active' ? '停用' : '启用'),
+        React.createElement(Button, { type: 'link', size: 'small', onClick: () => openSDrawer(record) }, '编辑'),
+        React.createElement(Button, { type: 'link', size: 'small', onClick: () => copyStrategy(record) }, '复制'),
+        React.createElement(Popconfirm, { title: '确定删除该策略？', onConfirm: () => deleteStrategy(record.id) },
+          React.createElement(Button, { type: 'link', size: 'small', danger: true }, '删除')
+        )
+      )},
+    ];
+
+    return React.createElement(React.Fragment, null,
+      React.createElement(Row, { gutter: 16, style: { marginBottom: 16 } },
+        [
+          { label: '总数', value: counts.total, color: '#1890ff' },
+          { label: '生效中', value: counts.active, color: '#52c41a' },
+          { label: '草稿', value: counts.draft, color: '#999' },
+          { label: '已过期', value: counts.expired, color: '#faad14' },
+          { label: '已停用', value: counts.disabled, color: '#ff4d4f' },
+        ].map(item => React.createElement(Col, { span: 4, key: item.label },
+          React.createElement(Card, { size: 'small', hoverable: true },
+            React.createElement('div', { className: 'stat-card' },
+              React.createElement('div', { className: 'value', style: { color: item.color } }, item.value),
+              React.createElement('div', { className: 'label' }, item.label)
+            )
+          )
+        ))
+      ),
+      React.createElement(Card, { size: 'small', style: { marginBottom: 16 } },
+        React.createElement(Space, { wrap: true },
+          React.createElement(Input, { placeholder: '搜索策略名称', style: { width: 200 }, allowClear: true, value: sFilters.name, onChange: e => setSFilters(p => ({ ...p, name: e.target.value })) }),
+          React.createElement(Select, { placeholder: '状态', style: { width: 120 }, allowClear: true, value: sFilters.status, onChange: v => setSFilters(p => ({ ...p, status: v })),
+            options: [{ value: 'active', label: '生效中' }, { value: 'draft', label: '草稿' }, { value: 'expired', label: '已过期' }, { value: 'disabled', label: '已停用' }]
+          }),
+          React.createElement(Select, { placeholder: '等级', style: { width: 110 }, allowClear: true, value: sFilters.level, onChange: v => setSFilters(p => ({ ...p, level: v })),
+            options: BOOST_LEVELS.map(l => ({ value: l, label: l }))
+          }),
+          React.createElement(Button, { type: 'primary', onClick: () => openSDrawer(null) }, '+ 新建策略')
+        )
+      ),
+      React.createElement(Table, { dataSource: filteredStrategies, columns, rowKey: 'id', size: 'small', pagination: { pageSize: 10 }, scroll: { x: 1100 } })
+    );
+  };
+
+  // ---- 2. Strategy Drawer ----
+  const renderStrategyDrawer = () => {
+    const EffectTypeWatch = () => {
+      const effectType = Form.useWatch('effectType', sForm);
+      if (effectType !== 'scheduled') return null;
+      return React.createElement(Form.Item, { name: 'timeRange', label: '生效时间区间', rules: [{ required: true, message: '请选择时间区间' }] },
+        React.createElement(RangePicker, { showTime: true, style: { width: '100%' }, format: 'YYYY-MM-DD HH:mm' })
+      );
+    };
+    return React.createElement(Drawer, {
+      title: editingS ? '编辑策略' : '新建策略',
+      open: sDrawerOpen,
+      onClose: () => setSDrawerOpen(false),
+      width: 580,
+      extra: React.createElement(Space, null,
+        React.createElement(Button, { onClick: () => setSDrawerOpen(false) }, '取消'),
+        React.createElement(Button, { type: 'primary', onClick: saveStrategy }, '保存')
+      )
+    },
+      React.createElement(Form, { form: sForm, layout: 'vertical', initialValues: { effectType: 'immediate', priority: 50 } },
+        React.createElement(Form.Item, { name: 'name', label: '策略名称', rules: [{ required: true, message: '请输入策略名称' }] },
+          React.createElement(Input, { placeholder: '如：春季S级活动提权' })
+        ),
+        React.createElement(Row, { gutter: 16 },
+          React.createElement(Col, { span: 12 },
+            React.createElement(Form.Item, { name: 'level', label: '提权等级', rules: [{ required: true, message: '请选择' }] },
+              React.createElement(Select, { placeholder: '选择等级', options: BOOST_LEVELS.map(l => ({ value: l, label: l })) })
+            )
+          ),
+          React.createElement(Col, { span: 12 },
+            React.createElement(Form.Item, { name: 'priority', label: '优先级 (1-100)' },
+              React.createElement(InputNumber, { min: 1, max: 100, style: { width: '100%' } })
+            )
+          )
+        ),
+        React.createElement(Form.Item, { name: 'effectType', label: '生效方式' },
+          React.createElement(Radio.Group, null,
+            React.createElement(Radio, { value: 'immediate' }, '立即生效'),
+            React.createElement(Radio, { value: 'scheduled' }, '定时'),
+            React.createElement(Radio, { value: 'permanent' }, '永久')
+          )
+        ),
+        React.createElement(EffectTypeWatch),
+        React.createElement(Form.Item, { name: 'poolIds', label: '关联内容池' },
+          React.createElement(Select, { mode: 'multiple', placeholder: '选择内容池（仅显示未被其他策略绑定的池）', options: unboundPoolOptions })
+        ),
+        React.createElement(Divider),
+        React.createElement(Button, { block: true, onClick: () => Modal.info({
+          title: '效果预览',
+          width: 520,
+          content: React.createElement('div', null,
+            React.createElement('p', null, '当前策略将对关联内容池中的内容应用提权系数。'),
+            React.createElement(Divider),
+            React.createElement(Row, { gutter: 16 },
+              React.createElement(Col, { span: 8 }, React.createElement(Statistic, { title: '预计影响内容', value: rand(500, 5000), suffix: '条' })),
+              React.createElement(Col, { span: 8 }, React.createElement(Statistic, { title: '当前池内容总数', value: rand(1000, 8000), suffix: '条' })),
+              React.createElement(Col, { span: 8 }, React.createElement(Statistic, { title: '预计覆盖率', value: rand(15, 85), suffix: '%' }))
+            )
+          )
+        })}, '效果预览')
+      )
+    );
+  };
+
+  // ---- 3. Pool List ----
+  const renderPools = () => {
+    const columns = [
+      { title: '池名称', dataIndex: 'name', key: 'name', width: 180, render: (t, r) => React.createElement('a', { onClick: () => openPDrawer(r) }, t) },
+      { title: '类型', dataIndex: 'type', key: 'type', width: 90, render: t => React.createElement(Tag, { color: t === 'rule' ? 'blue' : 'green' }, t === 'rule' ? '规则型' : '人工型') },
+      { title: '内容数量', dataIndex: 'contentCount', key: 'cnt', width: 100, sorter: (a, b) => a.contentCount - b.contentCount, render: v => v.toLocaleString() },
+      { title: '绑定策略', dataIndex: 'strategyId', key: 'strategy', width: 160, render: id => id ? React.createElement(Tag, { color: 'purple' }, getStrategyName(id)) : React.createElement(Text, { type: 'secondary' }, '未绑定') },
+      { title: 'TTL', dataIndex: 'ttl', key: 'ttl', width: 80 },
+      { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt', width: 150 },
+      { title: '操作', key: 'action', width: 240, render: (_, record) => React.createElement(Space, { size: 'small' },
+        React.createElement(Button, { type: 'link', size: 'small', onClick: () => openPDrawer(record) }, '编辑'),
+        React.createElement(Button, { type: 'link', size: 'small', onClick: () => { setContentModalPool(record); setContentModalOpen(true); } }, '查看内容'),
+        React.createElement(Button, { type: 'link', size: 'small', onClick: () => copyPool(record) }, '复制'),
+        React.createElement(Popconfirm, { title: '确定删除？', onConfirm: () => deletePool(record.id) },
+          React.createElement(Button, { type: 'link', size: 'small', danger: true }, '删除')
+        )
+      )},
+    ];
+
+    return React.createElement(React.Fragment, null,
+      React.createElement(Card, { size: 'small', style: { marginBottom: 16 } },
+        React.createElement(Space, { wrap: true },
+          React.createElement(Input, { placeholder: '搜索池名称', style: { width: 200 }, allowClear: true, value: pFilters.name, onChange: e => setPFilters(p => ({ ...p, name: e.target.value })) }),
+          React.createElement(Select, { placeholder: '类型', style: { width: 120 }, allowClear: true, value: pFilters.type, onChange: v => setPFilters(p => ({ ...p, type: v })),
+            options: [{ value: 'rule', label: '规则型' }, { value: 'manual', label: '人工型' }]
+          }),
+          React.createElement(Button, { type: 'primary', onClick: () => openPDrawer(null) }, '+ 新建内容池')
+        )
+      ),
+      React.createElement(Table, { dataSource: filteredPools, columns, rowKey: 'id', size: 'small', pagination: { pageSize: 10 } })
+    );
+  };
+
+  // ---- 4. Pool Drawer ----
+  const renderPoolDrawer = () => {
+    const PoolTypeWatch = () => {
+      const poolType = Form.useWatch('type', pForm);
+
+      if (poolType === 'rule') {
+        return React.createElement(React.Fragment, null,
+          React.createElement(Divider, { orientation: 'left' }, '规则条件组（AND 关系）'),
+          React.createElement(Form.List, { name: 'rules' }, (fields, { add, remove }) =>
+            React.createElement(React.Fragment, null,
+              fields.map(({ key, name, ...rest }) =>
+                React.createElement('div', { className: 'rule-row', key },
+                  React.createElement(Form.Item, { ...rest, name: [name, 'field'], noStyle: true },
+                    React.createElement(Select, { style: { width: 110 }, options: RULE_FIELDS, placeholder: '字段' })
+                  ),
+                  React.createElement(Form.Item, { ...rest, name: [name, 'operator'], noStyle: true },
+                    React.createElement(Select, { style: { width: 110 }, options: RULE_OPERATORS, placeholder: '算子' })
+                  ),
+                  React.createElement(Form.Item, { ...rest, name: [name, 'value'], noStyle: true },
+                    React.createElement(Input, { placeholder: '值（多个用逗号分隔）', style: { flex: 1 } })
+                  ),
+                  fields.length > 1 && React.createElement(Button, { type: 'text', danger: true, size: 'small', onClick: () => remove(name) }, 'X')
+                )
+              ),
+              React.createElement(Button, { type: 'dashed', block: true, onClick: () => add({ field: 'topic', operator: 'contains', value: '' }), style: { marginBottom: 16 } }, '+ 添加条件')
+            )
+          ),
+          React.createElement(Form.Item, { name: 'blacklistPids', label: '屏蔽内容 ID（每行一个）' },
+            React.createElement(TextArea, { rows: 3, placeholder: '输入需要屏蔽的内容 ID，每行一个' })
+          ),
+          React.createElement(Form.Item, { name: 'blacklistUids', label: '屏蔽作者 ID（每行一个）' },
+            React.createElement(TextArea, { rows: 3, placeholder: '输入需要屏蔽的作者 ID，每行一个' })
+          ),
+          React.createElement(Form.Item, { name: 'ttl', label: 'TTL' },
+            React.createElement(Select, { options: ['3天', '7天', '14天', '30天', '跟随规则'].map(t => ({ value: t, label: t })) })
+          )
+        );
+      }
+
+      if (poolType === 'manual') {
+        return React.createElement(React.Fragment, null,
+          React.createElement(Divider, { orientation: 'left' }, '内容导入'),
+          React.createElement(Form.Item, { name: 'importIds', label: 'ID 导入（粘贴，逗号或换行分隔）' },
+            React.createElement(TextArea, { rows: 4, placeholder: 'PID_001\nPID_002\nPID_003' })
+          ),
+          React.createElement(Form.Item, { label: '或上传文件' },
+            React.createElement(Upload.Dragger, { accept: '.csv,.txt,.xlsx', beforeUpload: () => { message.info('模拟：文件已解析，导入 42 条内容 ID'); return false; }, maxCount: 1, style: { padding: '8px 0' } },
+              React.createElement('p', { style: { margin: 0, padding: '8px' } }, '点击或拖拽 CSV / TXT 文件到此区域')
+            )
+          ),
+          React.createElement(Form.Item, { name: 'importMode', label: '导入模式' },
+            React.createElement(Radio.Group, null,
+              React.createElement(Radio, { value: 'incremental' }, '增量添加'),
+              React.createElement(Radio, { value: 'full' }, '全量覆盖')
+            )
+          ),
+          React.createElement(Form.Item, { name: 'ttl', label: 'TTL' },
+            React.createElement(Select, { options: ['3天', '7天', '14天', '30天', '永久'].map(t => ({ value: t, label: t })) })
+          )
+        );
+      }
+
+      return null;
+    };
+
+    return React.createElement(Drawer, {
+      title: editingP ? '编辑内容池' : '新建内容池',
+      open: pDrawerOpen,
+      onClose: () => setPDrawerOpen(false),
+      width: 620,
+      destroyOnClose: true,
+      extra: React.createElement(Space, null,
+        React.createElement(Button, { onClick: () => setPDrawerOpen(false) }, '取消'),
+        React.createElement(Button, { type: 'primary', onClick: savePool }, '保存')
+      )
+    },
+      React.createElement(Form, { form: pForm, layout: 'vertical', initialValues: { type: 'rule', ttl: '7天', importMode: 'incremental' } },
+        React.createElement(Form.Item, { name: 'name', label: '池名称', rules: [{ required: true, message: '请输入' }] },
+          React.createElement(Input, { placeholder: '如：春季话题内容池' })
+        ),
+        React.createElement(Form.Item, { name: 'type', label: '类型' },
+          React.createElement(Select, { disabled: !!editingP, options: [{ value: 'rule', label: '规则型' }, { value: 'manual', label: '人工型' }] })
+        ),
+        React.createElement(PoolTypeWatch)
+      )
+    );
+  };
+
+  // ---- 6. Blocklist ----
+  const renderBlocklist = () => {
+    const makeColumns = (type) => [
+      { title: 'ID', dataIndex: 'id', key: 'id', width: 160 },
+      { title: '添加时间', dataIndex: 'addedAt', key: 'addedAt', width: 150 },
+      { title: '操作人', dataIndex: 'operator', key: 'operator', width: 80 },
+      { title: '操作原因', dataIndex: 'reason', key: 'reason' },
+      { title: '操作', key: 'action', width: 80, render: (_, record) =>
+        React.createElement(Popconfirm, { title: '确定移除？', onConfirm: () => removeBlockItem(type, record.id) },
+          React.createElement(Button, { type: 'link', size: 'small', danger: true }, '移除')
+        )
+      },
+    ];
+
+    return React.createElement(React.Fragment, null,
+      React.createElement(Alert, {
+        message: '全局屏蔽池优先级最高',
+        description: '被屏蔽的内容/作者将不会出现在任何内容池中，即使匹配规则也会被过滤。屏蔽后 boost_tag 将被强制清除。',
+        type: 'warning', showIcon: true, style: { marginBottom: 16 }
+      }),
+      React.createElement(Tabs, {
+        items: [
+          {
+            key: 'pids',
+            label: `屏蔽内容 ID (${blocklist.pids.length})`,
+            children: React.createElement(React.Fragment, null,
+              React.createElement(Space, { style: { marginBottom: 12 } },
+                React.createElement(Button, { type: 'primary', onClick: () => { setBlockAddType('pids'); setBlockAddOpen(true); } }, '批量添加')
+              ),
+              React.createElement(Table, { dataSource: blocklist.pids, columns: makeColumns('pids'), rowKey: 'id', size: 'small', pagination: { pageSize: 10 } })
+            ),
+          },
+          {
+            key: 'uids',
+            label: `屏蔽作者 ID (${blocklist.uids.length})`,
+            children: React.createElement(React.Fragment, null,
+              React.createElement(Space, { style: { marginBottom: 12 } },
+                React.createElement(Button, { type: 'primary', onClick: () => { setBlockAddType('uids'); setBlockAddOpen(true); } }, '批量添加')
+              ),
+              React.createElement(Table, { dataSource: blocklist.uids, columns: makeColumns('uids'), rowKey: 'id', size: 'small', pagination: { pageSize: 10 } })
+            ),
+          },
+        ]
+      })
+    );
+  };
+
+  // ---- 7. Mapping ----
+  const renderMapping = () => {
+    const columns = [
+      { title: '内部提权等级', dataIndex: 'level', key: 'level', width: 120,
+        render: l => React.createElement(Tag, { color: LEVEL_COLORS[l] || 'default' }, l),
+        onCell: (_, index) => {
+          if (index % 2 === 0) return { rowSpan: 2 };
+          return { rowSpan: 0 };
+        }
+      },
+      { title: 'boost_tag', dataIndex: 'boost_tag', key: 'boost_tag', width: 160, render: t => React.createElement(Text, { code: true }, t) },
+      { title: '火山系数', dataIndex: 'volcano_coeff', key: 'volcano_coeff', width: 100, render: v => React.createElement(Text, { strong: true, type: v >= 2.0 ? 'danger' : v >= 1.5 ? 'warning' : undefined }, v.toFixed(2)) },
+      { title: '适用场景', dataIndex: 'scenario', key: 'scenario' },
+    ];
+
+    return React.createElement(React.Fragment, null,
+      React.createElement(Alert, {
+        message: '此表为只读配置。如需修改映射关系，请联系系统管理员并同步更新火山控制台配置。',
+        type: 'info', showIcon: true, style: { marginBottom: 16 }
+      }),
+      React.createElement(Table, { dataSource: MAPPING_DATA, columns, rowKey: 'boost_tag', size: 'middle', pagination: false, bordered: true })
+    );
+  };
+
+  // ---- 8. System Tools ----
+  const renderSystemTools = () => React.createElement(React.Fragment, null,
+    React.createElement(Card, { title: '全量重算', size: 'small', style: { marginBottom: 16 } },
+      React.createElement(Paragraph, { type: 'secondary' }, '触发所有内容池的规则重新匹配和提权系数重算。此操作可能需要数分钟完成，执行期间不影响线上服务。'),
+      React.createElement(Popconfirm, { title: '确定要触发全量重算？', description: '此操作会重新计算所有策略和内容池的提权系数，不可中断。', onConfirm: handleRecalculate },
+        React.createElement(Button, { type: 'primary' }, '触发全量重算')
+      )
+    ),
+
+    React.createElement('div', { className: 'emergency-section' },
+      React.createElement('h4', null, '紧急止血'),
+
+      React.createElement(Card, { size: 'small', style: { marginBottom: 12 } },
+        React.createElement(Row, { align: 'middle', justify: 'space-between' },
+          React.createElement(Col, null,
+            React.createElement(Text, { strong: true }, 'Level 1：暂停同步'),
+            React.createElement('br'),
+            React.createElement(Text, { type: 'secondary', style: { fontSize: 13 } }, '暂停所有提权策略的同步下发，不影响已生效的系数。线上推荐维持现状。')
+          ),
+          React.createElement(Col, null,
+            React.createElement(Switch, {
+              checked: syncPaused,
+              checkedChildren: '已暂停',
+              unCheckedChildren: '运行中',
+              onChange: (checked) => {
+                setSyncPaused(checked);
+                message[checked ? 'warning' : 'success'](checked ? '已暂停同步下发' : '已恢复同步');
+                setLogs(prev => [{ id: Date.now(), time: dayjs().format('YYYY-MM-DD HH:mm'), operator: 'wilkins', type: '紧急止血', target: '-', detail: checked ? 'Level 1: 暂停同步下发' : '恢复同步下发' }, ...prev]);
+              }
+            })
+          )
+        )
+      ),
+
+      React.createElement(Card, { size: 'small' },
+        React.createElement(Row, { align: 'middle', justify: 'space-between' },
+          React.createElement(Col, null,
+            React.createElement(Text, { strong: true }, 'Level 2：全量归零'),
+            React.createElement('br'),
+            React.createElement(Text, { type: 'secondary', style: { fontSize: 13 } }, '将所有内容的提权系数归零，所有策略标记为停用。此操作不可逆，需手动重新启用策略。')
+          ),
+          React.createElement(Col, null,
+            React.createElement(Popconfirm, {
+              title: '危险操作',
+              description: '确定要执行全量归零？此操作将清除所有提权系数！',
+              onConfirm: () => {
+                Modal.confirm({
+                  title: '二次确认',
+                  content: '全量归零将导致所有内容失去提权系数，所有策略变为停用状态。此操作不可逆！确定继续？',
+                  okText: '确定归零',
+                  okType: 'danger',
+                  onOk: handleZeroOut,
+                });
+              }
+            },
+              React.createElement(Button, { danger: true, type: 'primary' }, '全量归零')
+            )
+          )
+        )
+      )
+    ),
+
+    React.createElement(Card, { title: '操作日志', size: 'small' },
+      React.createElement(Table, {
+        dataSource: logs, rowKey: 'id', size: 'small', pagination: { pageSize: 10 },
+        columns: [
+          { title: '时间', dataIndex: 'time', key: 'time', width: 150 },
+          { title: '操作人', dataIndex: 'operator', key: 'operator', width: 80 },
+          { title: '类型', dataIndex: 'type', key: 'type', width: 100, render: t => React.createElement(Tag, { color: t === '全量重算' ? 'blue' : t === '紧急止血' ? 'red' : t === '屏蔽' ? 'orange' : 'default' }, t) },
+          { title: '对象', dataIndex: 'target', key: 'target', width: 160 },
+          { title: '详情', dataIndex: 'detail', key: 'detail' },
+        ]
+      })
+    )
+  );
+
+  // ================================================================
+  // Layout
+  // ================================================================
+  const menuItems = [
+    { key: 'strategies', label: '策略列表', icon: null },
+    { key: 'pools', label: '内容池', icon: null },
+    { key: 'blocklist', label: '全局屏蔽池', icon: null },
+    { key: 'mapping', label: '映射表配置', icon: null },
+    { key: 'tools', label: '系统工具', icon: null },
+  ];
+
+  const PAGE_TITLES = {
+    strategies: '策略列表',
+    pools: '内容池管理',
+    blocklist: '全局屏蔽池',
+    mapping: '映射表配置',
+    tools: '系统工具',
+  };
+
+  const pageRenderers = {
+    strategies: renderStrategies,
+    pools: renderPools,
+    blocklist: renderBlocklist,
+    mapping: renderMapping,
+    tools: renderSystemTools,
+  };
+
+  return React.createElement(Layout, { style: { minHeight: '100vh' } },
+    React.createElement(Sider, { width: 200, theme: 'dark', style: { overflow: 'auto', position: 'fixed', left: 0, top: 0, bottom: 0 } },
+      React.createElement('div', { className: 'logo-area' }, '内容提权后台 v2.0'),
+      React.createElement(Menu, {
+        theme: 'dark', mode: 'inline',
+        selectedKeys: [page],
+        onClick: ({ key }) => setPage(key),
+        items: menuItems,
+      })
+    ),
+    React.createElement(Layout, { style: { marginLeft: 200 } },
+      React.createElement('div', { className: 'header-bar' },
+        React.createElement(Text, { strong: true, style: { fontSize: 16 } }, PAGE_TITLES[page]),
+        React.createElement(Space, null,
+          syncPaused && React.createElement(Tag, { color: 'red' }, '同步已暂停'),
+          React.createElement(Text, { type: 'secondary' }, '操作人：wilkins')
+        )
+      ),
+      React.createElement(Content, { style: { margin: 16, padding: 24, background: '#fff', borderRadius: 8, minHeight: 'calc(100vh - 88px)', overflow: 'auto' } },
+        pageRenderers[page]?.()
+      )
+    ),
+
+    // Drawers & Modals
+    renderStrategyDrawer(),
+    renderPoolDrawer(),
+    React.createElement(ContentViewModal, { open: contentModalOpen, pool: contentModalPool, onClose: () => setContentModalOpen(false) }),
+    React.createElement(BlocklistAddModal, { open: blockAddOpen, type: blockAddType, onClose: () => setBlockAddOpen(false), onAdd: addBlockItems }),
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(App));
+</script>
+</body>
+</html>
