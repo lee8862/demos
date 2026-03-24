@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP 中台 - KEY 审批管理</title>
+    <style>
+        :root {
+            --bg: #f0f2f5;
+            --card: #fff;
+            --border: #e5e6eb;
+            --primary: #3370ff;
+            --primary-bg: #e8f0fe;
+            --success: #00b42a;
+            --success-bg: #e8ffea;
+            --warning: #ff7d00;
+            --warning-bg: #fff7e8;
+            --danger: #f53f3f;
+            --danger-bg: #ffece8;
+            --purple: #722ed1;
+            --purple-bg: #faf5ff;
+            --purple-border: #e8d5f5;
+            --text: #1d2129;
+            --text2: #4e5969;
+            --text3: #86909c;
+            --radius: 8px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+
+        .layout {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 220px;
+            background: #1d2129;
+            color: #fff;
+            padding: 20px 0;
+            flex-shrink: 0;
+        }
+
+        .sidebar-logo {
+            padding: 0 20px 24px;
+            font-size: 16px;
+            font-weight: 600;
+            border-bottom: 1px solid #333;
+            margin-bottom: 12px;
+        }
+
+        .sidebar-logo span {
+            color: var(--primary);
+        }
+
+        .nav-item {
+            padding: 10px 20px;
+            font-size: 14px;
+            color: #a0a4aa;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+
+        .nav-item:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .nav-item.active {
+            color: #fff;
+            background: var(--primary);
+            border-radius: 0 20px 20px 0;
+            margin-right: 12px;
+        }
+
+        .nav-badge {
+            background: var(--danger);
+            color: #fff;
+            font-size: 11px;
+            padding: 1px 6px;
+            border-radius: 10px;
+            margin-left: auto;
+        }
+
+        .main {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        .page-header {
+            margin-bottom: 24px;
+        }
+
+        .page-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .page-desc {
+            font-size: 13px;
+            color: var(--text3);
+            margin-top: 4px;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            font-size: 14px;
+            color: var(--text2);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            color: var(--text);
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+            font-weight: 500;
+        }
+
+        .tab .count {
+            font-size: 12px;
+            background: #f2f3f5;
+            padding: 1px 6px;
+            border-radius: 10px;
+            margin-left: 4px;
+        }
+
+        .tab.active .count {
+            background: var(--primary-bg);
+            color: var(--primary);
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 16px 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text3);
+        }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            margin-top: 4px;
+        }
+
+        .stat-change {
+            font-size: 12px;
+            margin-top: 4px;
+        }
+
+        .table-card {
+            background: var(--card);
+            border-radius: var(--radius);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+            overflow: hidden;
+        }
+
+        .table-toolbar {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .search-input {
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            width: 240px;
+            outline: none;
+        }
+
+        .search-input:focus {
+            border-color: var(--primary);
+        }
+
+        .filter-select {
+            padding: 6px 12px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-size: 13px;
+            outline: none;
+            background: #fff;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            text-align: left;
+            padding: 12px 16px;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text3);
+            background: #fafafa;
+            border-bottom: 1px solid var(--border);
+        }
+
+        td {
+            padding: 14px 16px;
+            font-size: 13px;
+            border-bottom: 1px solid #f5f5f5;
+            vertical-align: top;
+        }
+
+        tr:hover td {
+            background: #fafbfc;
+        }
+
+        tr {
+            cursor: pointer;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-pending {
+            background: var(--warning-bg);
+            color: var(--warning);
+        }
+
+        .badge-approved {
+            background: var(--success-bg);
+            color: var(--success);
+        }
+
+        .badge-rejected {
+            background: var(--danger-bg);
+            color: var(--danger);
+        }
+
+        .badge-level3 {
+            background: #fff7e6;
+            color: #d48806;
+        }
+
+        .badge-level4 {
+            background: #fff1f0;
+            color: #cf1322;
+        }
+
+        .drawer-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.35);
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .drawer-overlay.open {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .drawer {
+            position: fixed;
+            top: 0;
+            right: -680px;
+            width: 680px;
+            height: 100vh;
+            background: var(--card);
+            z-index: 1001;
+            transition: right 0.3s;
+            display: flex;
+            flex-direction: column;
+            box-shadow: -4px 0 24px rgba(0, 0, 0, 0.1);
+        }
+
+        .drawer.open {
+            right: 0;
+        }
+
+        .drawer-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+        }
+
+        .drawer-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .drawer-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            border: none;
+            background: #f5f5f5;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .drawer-close:hover {
+            background: #eee;
+        }
+
+        .drawer-body {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .drawer-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            flex-shrink: 0;
+        }
+
+        .detail-section {
+            margin-bottom: 24px;
+        }
+
+        .detail-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .detail-item {}
+
+        .detail-label {
+            font-size: 12px;
+            color: var(--text3);
+            margin-bottom: 2px;
+        }
+
+        .detail-value {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .detail-full {
+            grid-column: 1 / -1;
+        }
+
+        .scope-card {
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 8px;
+        }
+
+        .scope-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .scope-name {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .scope-tools {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .scope-tool {
+            font-size: 12px;
+            padding: 3px 8px;
+            background: #f5f6f7;
+            border-radius: 4px;
+            font-family: 'SF Mono', monospace;
+        }
+
+        /* Pipeline config section in approval */
+        .pipeline-config {
+            margin-top: 12px;
+            border: 1px solid var(--purple-border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .pipeline-config-header {
+            padding: 10px 14px;
+            background: var(--purple-bg);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+        }
+
+        .pipeline-config-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--purple);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .pipeline-config-toggle {
+            font-size: 12px;
+            color: var(--purple);
+        }
+
+        .pipeline-config-body {
+            padding: 12px 14px;
+            border-top: 1px solid var(--purple-border);
+        }
+
+        .pipeline-rule {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f5f5f5;
+        }
+
+        .pipeline-rule:last-child {
+            border-bottom: none;
+        }
+
+        .rule-type-tag {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 500;
+            margin-right: 10px;
+            flex-shrink: 0;
+            width: 36px;
+            text-align: center;
+        }
+
+        .type-mask {
+            background: #e6f7ff;
+            color: #0958d9;
+        }
+
+        .type-desen {
+            background: #fff7e6;
+            color: #d48806;
+        }
+
+        .type-filter {
+            background: #f0faf0;
+            color: #0a8020;
+        }
+
+        .rule-info {
+            flex: 1;
+        }
+
+        .rule-field {
+            font-size: 13px;
+            font-weight: 500;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .rule-desc {
+            font-size: 11px;
+            color: var(--text3);
+        }
+
+        .toggle {
+            position: relative;
+            width: 40px;
+            height: 22px;
+            flex-shrink: 0;
+        }
+
+        .toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background: #ccc;
+            border-radius: 22px;
+            transition: 0.3s;
+        }
+
+        .toggle-slider:before {
+            content: '';
+            position: absolute;
+            height: 16px;
+            width: 16px;
+            left: 3px;
+            bottom: 3px;
+            background: #fff;
+            border-radius: 50%;
+            transition: 0.3s;
+        }
+
+        .toggle input:checked+.toggle-slider {
+            background: var(--primary);
+        }
+
+        .toggle input:checked+.toggle-slider:before {
+            transform: translateX(18px);
+        }
+
+        .pipeline-summary {
+            margin-top: 8px;
+            padding: 8px 10px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--text2);
+        }
+
+        .timeline {
+            padding-left: 20px;
+            border-left: 2px solid var(--border);
+        }
+
+        .timeline-item {
+            position: relative;
+            padding: 0 0 20px 16px;
+        }
+
+        .timeline-item:last-child {
+            padding-bottom: 0;
+        }
+
+        .timeline-dot {
+            position: absolute;
+            left: -25px;
+            top: 4px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            background: #fff;
+        }
+
+        .timeline-item.done .timeline-dot {
+            border-color: var(--success);
+            background: var(--success);
+        }
+
+        .timeline-item.current .timeline-dot {
+            border-color: var(--primary);
+            background: var(--primary);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(51, 112, 255, 0.3);
+            }
+
+            50% {
+                box-shadow: 0 0 0 6px rgba(51, 112, 255, 0);
+            }
+        }
+
+        .timeline-title {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .timeline-desc {
+            font-size: 12px;
+            color: var(--text3);
+            margin-top: 2px;
+        }
+
+        .reject-textarea {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 13px;
+            min-height: 60px;
+            resize: none;
+            outline: none;
+            font-family: inherit;
+        }
+
+        .reject-textarea:focus {
+            border-color: var(--danger);
+        }
+
+        .btn {
+            padding: 8px 20px;
+            border-radius: 6px;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn:hover {
+            filter: brightness(0.95);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: #fff;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: #fff;
+        }
+
+        .btn-outline {
+            background: #fff;
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .alert {
+            padding: 10px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            line-height: 1.5;
+        }
+
+        .alert-info {
+            background: #e8f0fe;
+            color: #245bdb;
+            border: 1px solid #bdd4fe;
+        }
+
+        .alert-purple {
+            background: var(--purple-bg);
+            color: var(--purple);
+            border: 1px solid var(--purple-border);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="layout">
+        <div class="sidebar">
+            <div class="sidebar-logo">🔧 <span>MCP</span> 中台</div>
+            <div class="nav-item">📊 Dashboard</div>
+            <div class="nav-item">🧩 MCP 服务管理</div>
+            <div class="nav-item active">🔑 KEY 审批 <span class="nav-badge">3</span></div>
+            <div class="nav-item">📋 KEY 台账</div>
+            <div class="nav-item">🛡️ tool_acl 管理</div>
+            <div class="nav-item">⚙️ 数据管道配置</div>
+            <div class="nav-item">📜 审计日志</div>
+            <div class="nav-item">👥 Token 管理</div>
+        </div>
+        <div class="main">
+            <div class="page-header">
+                <div class="page-title">🔑 KEY 审批管理</div>
+                <div class="page-desc">审批 MCP 能力申请，配置数据管道规则，管理 KEY 生命周期</div>
+            </div>
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-label">待审批</div>
+                    <div class="stat-value" style="color:var(--warning)">3</div>
+                    <div class="stat-change" style="color:var(--danger)">↑ 今日新增 2 条</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">本周已审批</div>
+                    <div class="stat-value" style="color:var(--success)">12</div>
+                    <div class="stat-change" style="color:var(--success)">通过率 91.7%</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">活跃 KEY 总数</div>
+                    <div class="stat-value">47</div>
+                    <div class="stat-change" style="color:var(--text3)">覆盖 15 个空间</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">已配置过滤规则</div>
+                    <div class="stat-value" style="color:#722ed1">23</div>
+                    <div class="stat-change" style="color:var(--text3)">涉及 8 个工具</div>
+                </div>
+            </div>
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('pending')">待审批 <span class="count">3</span></div>
+                <div class="tab" onclick="switchTab('approved')">已通过 <span class="count">41</span></div>
+                <div class="tab" onclick="switchTab('rejected')">已拒绝 <span class="count">6</span></div>
+                <div class="tab" onclick="switchTab('all')">全部 <span class="count">50</span></div>
+            </div>
+            <div class="table-card">
+                <div class="table-toolbar">
+                    <input class="search-input" placeholder="🔍 搜索申请编号、空间、申请人…">
+                    <select class="filter-select">
+                        <option>全部等级</option>
+                        <option>③ 标准审批</option>
+                        <option>④ 多级审批</option>
+                    </select>
+                    <select class="filter-select">
+                        <option>全部时间</option>
+                        <option>今天</option>
+                        <option>本周</option>
+                    </select>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>申请编号</th>
+                            <th>申请人</th>
+                            <th>空间</th>
+                            <th>服务/工具</th>
+                            <th>审批等级</th>
+                            <th>状态</th>
+                            <th>申请时间</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="drawer-overlay" id="overlay" onclick="closeDrawer()"></div>
+    <div class="drawer" id="drawer">
+        <div class="drawer-header">
+            <div class="drawer-title" id="drawerTitle">审批详情</div>
+            <button class="drawer-close" onclick="closeDrawer()">✕</button>
+        </div>
+        <div class="drawer-body" id="drawerBody"></div>
+        <div class="drawer-footer" id="drawerFooter"></div>
+    </div>
+
+    <script>
+        // Tool → pipeline rules mapping (based on feishu scope)
+        const toolPipelines = {
+            'search_employee': {
+                masks: [
+                    { field: 'salary', desc: '薪资', on: false },
+                    { field: 'id_card_number', desc: '身份证号', on: true },
+                    { field: 'bank_account', desc: '银行账号', on: true }
+                ],
+                desen: [
+                    { field: 'phone', desc: '手机号 → 138****5678', on: false },
+                    { field: 'email', desc: '邮箱 → zha***@co.com', on: false }
+                ],
+                filters: [
+                    { field: 'department_scope', desc: '行过滤：仅返回本部门及子部门', on: false }
+                ]
+            },
+            'get_user_info': {
+                masks: [
+                    { field: 'salary', desc: '薪资', on: false },
+                    { field: 'home_address', desc: '家庭住址', on: true },
+                    { field: 'id_card_number', desc: '身份证号', on: true }
+                ],
+                desen: [
+                    { field: 'phone', desc: '手机号 → 138****5678', on: false },
+                    { field: 'name', desc: '姓名 → 张*丰', on: false }
+                ],
+                filters: []
+            },
+            'list_user_events': {
+                masks: [{ field: 'private_notes', desc: '私人备注', on: false }],
+                desen: [],
+                filters: [{ field: 'department_scope', desc: '行过滤：仅返回本部门及子部门', on: false }]
+            },
+            'send_message': {
+                masks: [],
+                desen: [],
+                filters: [{ field: 'rate_limit', desc: '写入限流：单用户 50 条/天', on: true }]
+            },
+            'create_group': {
+                masks: [],
+                desen: [],
+                filters: [{ field: 'rate_limit', desc: '写入限流：单用户 10 次/天', on: true }]
+            }
+        };
+
+        // Deep clone pipeline state per application
+        let approvalPipelineState = {};
+
+        function initApprovalPipeline(appId, scope) {
+            if (approvalPipelineState[appId]) return;
+            approvalPipelineState[appId] = {};
+            scope.forEach(s => {
+                s.tools.forEach(t => {
+                    const rules = toolPipelines[t];
+                    if (rules) {
+                        approvalPipelineState[appId][t] = {
+                            masks: rules.masks.map(r => ({ ...r })),
+                            desen: rules.desen.map(r => ({ ...r })),
+                            filters: rules.filters.map(r => ({ ...r }))
+                        };
+                    }
+                });
+            });
+        }
+
+        function toggleApprovalRule(appId, tool, type, idx) {
+            approvalPipelineState[appId][tool][type][idx].on = !approvalPipelineState[appId][tool][type][idx].on;
+            const app = applications.find(a => a.id === appId);
+            openDrawer(appId); // Re-render
+        }
+
+        const applications = [
+            {
+                id: '#AP20260324001', applicant: '张三', applicant_id: 'ou_zhangsan', dept: '产品部',
+                space: '产品部工作空间', space_id: 'space_pm_001', level: 3, status: 'pending', time: '2026-03-24 14:30',
+                reason: 'HR 对接流程需要查看员工信息，用于入职/离职通知和团队排期查询',
+                scope: [
+                    { mcp: '飞书通讯录（团队）', mcp_id: 'feishu-contact-shared', tools: ['search_employee', 'get_user_info'] },
+                    { mcp: '飞书日历（团队）', mcp_id: 'feishu-calendar-shared', tools: ['list_user_events'] }
+                ],
+                timeline: [
+                    { title: '申请提交', desc: '张三 提交申请', time: '03-24 14:30', status: 'done' },
+                    { title: '平台管理员审批', desc: '等待审批', time: '—', status: 'current' },
+                    { title: '签发 KEY', desc: '自动执行', time: '—', status: '' }
+                ]
+            },
+            {
+                id: '#AP20260324002', applicant: '李四', applicant_id: 'ou_lisi', dept: '研发部',
+                space: '研发部工作空间', space_id: 'space_dev_002', level: 3, status: 'pending', time: '2026-03-24 15:10',
+                reason: '项管助手需要向群内推送每日站会消息和创建项目群',
+                scope: [
+                    { mcp: '飞书 IM（消息）', mcp_id: 'feishu-im-shared', tools: ['send_message', 'create_group'] }
+                ],
+                timeline: [
+                    { title: '申请提交', desc: '李四 提交申请', time: '03-24 15:10', status: 'done' },
+                    { title: '平台管理员审批', desc: '等待审批', time: '—', status: 'current' },
+                    { title: '签发 KEY', desc: '自动执行', time: '—', status: '' }
+                ]
+            },
+            {
+                id: '#AP20260324003', applicant: '王五', applicant_id: 'ou_wangwu', dept: '产品部',
+                space: '产品部工作空间', space_id: 'space_pm_001', level: 3, status: 'pending', time: '2026-03-24 16:45',
+                reason: '追加日历排期查询能力，用于每日站会自动准备议程',
+                scope: [
+                    { mcp: '飞书日历（团队）', mcp_id: 'feishu-calendar-shared', tools: ['list_user_events'] }
+                ],
+                append: true, existing_key: 'KEY-PM-001',
+                timeline: [
+                    { title: '申请提交', desc: '王五 提交追加申请', time: '03-24 16:45', status: 'done' },
+                    { title: '平台管理员审批', desc: '等待审批', time: '—', status: 'current' },
+                    { title: 'Scope 合并', desc: '合并到已有 KEY', time: '—', status: '' }
+                ]
+            }
+        ];
+
+        function renderTable(filter = 'pending') {
+            const tbody = document.getElementById('tableBody');
+            const filtered = filter === 'all' ? applications : applications.filter(a => a.status === filter);
+            tbody.innerHTML = filtered.map(a => `
+      <tr onclick="openDrawer('${a.id}')">
+        <td><strong>${a.id}</strong>${a.append ? '<br><span style="font-size:11px;color:#722ed1">📎 Scope 追加</span>' : ''}</td>
+        <td>${a.applicant}<br><span style="font-size:11px;color:var(--text3)">${a.dept}</span></td>
+        <td>${a.space}<br><span style="font-size:11px;color:var(--text3);font-family:monospace">${a.space_id}</span></td>
+        <td>${a.scope.map(s => s.mcp).join('<br>')}<br><span style="font-size:11px;color:var(--text3)">${a.scope.reduce((n, s) => n + s.tools.length, 0)} 个工具</span></td>
+        <td><span class="badge badge-level3">③ 标准审批</span></td>
+        <td><span class="badge badge-${a.status}">${a.status === 'pending' ? '⏳ 待审批' : a.status === 'approved' ? '✅ 已通过' : '❌ 已拒绝'}</span></td>
+        <td style="font-size:12px;color:var(--text3)">${a.time}</td>
+      </tr>
+    `).join('');
+        }
+
+        function switchTab(filter) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            event.target.closest('.tab').classList.add('active');
+            renderTable(filter);
+        }
+
+        function openDrawer(id) {
+            const app = applications.find(a => a.id === id);
+            if (!app) return;
+
+            initApprovalPipeline(id, app.scope);
+            const ps = approvalPipelineState[id];
+
+            document.getElementById('drawerTitle').textContent = `审批详情 ${app.id}`;
+            const body = document.getElementById('drawerBody');
+
+            // Count enabled rules
+            let enabledCount = 0, totalRules = 0;
+            Object.values(ps).forEach(t => {
+                [...t.masks, ...t.desen, ...t.filters].forEach(r => { totalRules++; if (r.on) enabledCount++; });
+            });
+
+            body.innerHTML = `
+      ${app.append ? `<div class="alert alert-info">📎 此申请为 <strong>Scope 追加</strong>，将合并到已有 KEY <code>${app.existing_key}</code>。</div>` : ''}
+
+      <div class="detail-section">
+        <div class="detail-title">📋 基本信息</div>
+        <div class="detail-grid">
+          <div class="detail-item"><div class="detail-label">申请编号</div><div class="detail-value">${app.id}</div></div>
+          <div class="detail-item"><div class="detail-label">审批等级</div><div class="detail-value"><span class="badge badge-level3">③ 标准审批</span></div></div>
+          <div class="detail-item"><div class="detail-label">申请人</div><div class="detail-value">${app.applicant}（${app.dept}）</div></div>
+          <div class="detail-item"><div class="detail-label">user_id</div><div class="detail-value" style="font-family:monospace">${app.applicant_id}</div></div>
+          <div class="detail-item"><div class="detail-label">目标空间</div><div class="detail-value">${app.space}</div></div>
+          <div class="detail-item"><div class="detail-label">space_id（台账用）</div><div class="detail-value" style="font-family:monospace">${app.space_id}</div></div>
+          <div class="detail-item detail-full"><div class="detail-label">申请理由</div><div class="detail-value">${app.reason}</div></div>
+        </div>
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-title">🔧 申请的服务与工具</div>
+        ${app.scope.map(s => `
+          <div class="scope-card">
+            <div class="scope-header">
+              <div class="scope-name">${s.mcp}</div>
+              <span style="font-size:12px;color:var(--text3);font-family:monospace">${s.mcp_id}</span>
+            </div>
+            <div class="scope-tools">${s.tools.map(t => `<span class="scope-tool">${t}</span>`).join('')}</div>
+          </div>
+        `).join('')}
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-title">🛡️ 数据管道规则配置 <span style="font-size:12px;font-weight:normal;color:var(--text3)">（已开启 ${enabledCount}/${totalRules} 条规则）</span></div>
+        <div class="alert alert-purple" style="margin-bottom:12px">⚡ 根据申请的工具，展示对应的数据字段。<strong>默认不过滤</strong>，按业务需要开启。</div>
+
+        ${app.scope.map(s => s.tools.map(t => {
+                const rules = ps[t];
+                if (!rules) return '';
+                const allRules = [...rules.masks.map((r, i) => ({ ...r, type: 'masks', idx: i, typeLabel: '裁剪', typeClass: 'type-mask' })),
+                ...rules.desen.map((r, i) => ({ ...r, type: 'desen', idx: i, typeLabel: '脱敏', typeClass: 'type-desen' })),
+                ...rules.filters.map((r, i) => ({ ...r, type: 'filters', idx: i, typeLabel: '过滤', typeClass: 'type-filter' }))];
+                if (allRules.length === 0) return '';
+                const enabledInTool = allRules.filter(r => r.on).length;
+                return `
+            <div class="pipeline-config" style="margin-bottom:10px;">
+              <div class="pipeline-config-header">
+                <div class="pipeline-config-title">🔧 ${t} <span style="font-weight:normal;color:var(--text3)">（${enabledInTool}/${allRules.length} 已开启）</span></div>
+              </div>
+              <div class="pipeline-config-body">
+                ${allRules.map(r => `
+                  <div class="pipeline-rule">
+                    <span class="rule-type-tag ${r.typeClass}">${r.typeLabel}</span>
+                    <div class="rule-info">
+                      <div class="rule-field">${r.field}</div>
+                      <div class="rule-desc">${r.desc}</div>
+                    </div>
+                    <label class="toggle">
+                      <input type="checkbox" ${r.on ? 'checked' : ''} onchange="toggleApprovalRule('${id}','${t}','${r.type}',${r.idx})">
+                      <span class="toggle-slider"></span>
+                    </label>
+                  </div>
+                `).join('')}
+              </div>
+            </div>`;
+            }).join('')).join('')}
+      </div>
+
+      <div class="detail-section">
+        <div class="detail-title">📅 审批进度</div>
+        <div class="timeline">
+          ${app.timeline.map(t => `
+            <div class="timeline-item ${t.status}">
+              <div class="timeline-dot"></div>
+              <div class="timeline-title">${t.title}</div>
+              <div class="timeline-desc">${t.desc} · ${t.time}</div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      ${app.status === 'pending' ? `
+        <div class="detail-section">
+          <div class="detail-title">✏️ 拒绝理由（可选）</div>
+          <textarea class="reject-textarea" id="rejectReason" placeholder="填写拒绝原因…"></textarea>
+        </div>
+      ` : ''}
+    `;
+
+            const footer = document.getElementById('drawerFooter');
+            footer.innerHTML = app.status === 'pending'
+                ? `<button class="btn btn-outline" onclick="closeDrawer()">取消</button>
+         <button class="btn btn-danger" onclick="handleReject('${id}')">驳回</button>
+         <button class="btn btn-success" onclick="handleApprove('${id}')">✅ 通过并签发</button>`
+                : `<button class="btn btn-outline" onclick="closeDrawer()">关闭</button>`;
+
+            document.getElementById('overlay').classList.add('open');
+            document.getElementById('drawer').classList.add('open');
+        }
+
+        function closeDrawer() {
+            document.getElementById('overlay').classList.remove('open');
+            document.getElementById('drawer').classList.remove('open');
+        }
+
+        function handleApprove(id) {
+            const ps = approvalPipelineState[id];
+            let summary = [];
+            Object.entries(ps).forEach(([tool, rules]) => {
+                const enabled = [...rules.masks, ...rules.desen, ...rules.filters].filter(r => r.on);
+                if (enabled.length > 0) summary.push(`${tool}: ${enabled.map(r => r.field).join(', ')}`);
+            });
+            const app = applications.find(a => a.id === id);
+            app.status = 'approved';
+            closeDrawer(); renderTable('pending');
+            const pending = applications.filter(a => a.status === 'pending').length;
+            document.querySelector('.nav-badge').textContent = pending;
+            alert(`✅ 已通过 ${id}\n\n已配置的管道规则：\n${summary.length > 0 ? summary.join('\n') : '（未开启任何过滤规则）'}\n\n后续自动执行：\n1. 签发 KEY + pipeline_override 写入 scope\n2. 写入 Dify 空间 MCP 配置\n3. MCP 管家通知申请人`);
+        }
+
+        function handleReject(id) {
+            const reason = document.getElementById('rejectReason')?.value || '审批未通过';
+            applications.find(a => a.id === id).status = 'rejected';
+            closeDrawer(); renderTable('pending');
+            const pending = applications.filter(a => a.status === 'pending').length;
+            document.querySelector('.nav-badge').textContent = pending;
+            alert(`❌ 已驳回 ${id}\n拒绝原因：${reason}`);
+        }
+
+        renderTable('pending');
+    </script>
+</body>
+
+</html>

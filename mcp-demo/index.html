@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP 中台 Demo</title>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --border: #334155;
+            --primary: #3b82f6;
+            --primary-glow: rgba(59, 130, 246, 0.15);
+            --text: #f1f5f9;
+            --text2: #94a3b8;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, 'PingFang SC', 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 60px 20px;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #60a5fa, #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: var(--text2);
+            font-size: 15px;
+            margin-bottom: 48px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            max-width: 1000px;
+            width: 100%;
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+            text-decoration: none;
+            color: var(--text);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 32px var(--primary-glow);
+        }
+
+        .card-icon {
+            font-size: 36px;
+            margin-bottom: 16px;
+            display: block;
+        }
+
+        .card-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .card-desc {
+            font-size: 14px;
+            color: var(--text2);
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+
+        .card-tags {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            font-size: 11px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            background: rgba(59, 130, 246, 0.12);
+            color: #60a5fa;
+            font-weight: 500;
+        }
+
+        .tag.green {
+            background: rgba(34, 197, 94, 0.12);
+            color: #4ade80;
+        }
+
+        .tag.purple {
+            background: rgba(168, 85, 247, 0.12);
+            color: #c084fc;
+        }
+
+        .tag.orange {
+            background: rgba(251, 146, 60, 0.12);
+            color: #fb923c;
+        }
+
+        .footer {
+            margin-top: 60px;
+            color: var(--text2);
+            font-size: 13px;
+        }
+
+        .footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔧 MCP 中台 Demo</h1>
+    <p class="subtitle">安全、可控的企业 AI 数据接入层</p>
+
+    <div class="grid">
+        <a class="card" href="mcp-admin.html">
+            <span class="card-icon">🖥️</span>
+            <div class="card-title">MCP 中台管理后台</div>
+            <div class="card-desc">MCP 服务管理、工具注册、元数据编辑。支持服务导入、工具详情查看和 description 热更新。</div>
+            <div class="card-tags">
+                <span class="tag">管理后台</span>
+                <span class="tag green">服务管理</span>
+                <span class="tag green">工具注册</span>
+            </div>
+        </a>
+
+        <a class="card" href="mcp-pipeline.html">
+            <span class="card-icon">🛡️</span>
+            <div class="card-title">数据管道配置</div>
+            <div class="card-desc">可视化配置字段裁剪、脱敏规则和行过滤策略。支持按工具和安全等级查看管道配置。</div>
+            <div class="card-tags">
+                <span class="tag purple">数据管道</span>
+                <span class="tag purple">裁剪/脱敏</span>
+                <span class="tag">审计配置</span>
+            </div>
+        </a>
+
+        <a class="card" href="dify-mcp-key.html">
+            <span class="card-icon">🔑</span>
+            <div class="card-title">Dify KEY 管理</div>
+            <div class="card-desc">Dify 空间视角的 MCP 能力管理。查看已启用服务、申请新能力、管理 KEY scope。</div>
+            <div class="card-tags">
+                <span class="tag orange">Dify 端</span>
+                <span class="tag">KEY 管理</span>
+                <span class="tag green">能力申请</span>
+            </div>
+        </a>
+
+        <a class="card" href="mcp-key-h5.html">
+            <span class="card-icon">📱</span>
+            <div class="card-title">飞书 H5 申请页</div>
+            <div class="card-desc">移动端 3 步申请流程：选择空间 → 选择服务与工具 → 填写理由并提交。适配飞书内嵌 WebView。</div>
+            <div class="card-tags">
+                <span class="tag orange">H5 移动端</span>
+                <span class="tag">KEY 申请</span>
+                <span class="tag green">3 步流程</span>
+            </div>
+        </a>
+
+        <a class="card" href="mcp-approval.html">
+            <span class="card-icon">✅</span>
+            <div class="card-title">KEY 审批管理</div>
+            <div class="card-desc">审批 KEY 申请、配置数据管道过滤规则。审批人按需开启裁剪/脱敏/行过滤，通过后签发 KEY。</div>
+            <div class="card-tags">
+                <span class="tag purple">审批管理</span>
+                <span class="tag purple">管道规则配置</span>
+                <span class="tag">签发 KEY</span>
+            </div>
+        </a>
+    </div>
+
+    <div class="footer">MCP 中台方案设计 · 2026-03-24</div>
+</body>
+
+</html>

@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MCP 中台 - 数据管道配置</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/antd@5.12.8/dist/reset.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/antd@5.12.8/dist/antd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@ant-design/icons@5.2.6/dist/index.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.23.6/babel.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+        }
+
+        .logo {
+            height: 32px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 0 16px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #1677ff, #722ed1);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 700;
+        }
+
+        .pipeline-card {
+            border: 1px solid #f0f0f0;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            background: #fafafa;
+            transition: all 0.2s;
+        }
+
+        .pipeline-card:hover {
+            border-color: #1677ff;
+            box-shadow: 0 2px 8px rgba(22, 119, 255, 0.1);
+        }
+
+        .rule-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 12px;
+            background: #fff;
+            border: 1px solid #f0f0f0;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            transition: all 0.2s;
+        }
+
+        .rule-row:hover {
+            border-color: #d9d9d9;
+            background: #fafafa;
+        }
+
+        .preview-text {
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 12px;
+            color: #8c8c8c;
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .exec-order {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            margin-bottom: 24px;
+        }
+
+        .exec-step {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: #fff;
+            border: 1px solid #d9d9d9;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .exec-step:first-child {
+            border-radius: 6px 0 0 6px;
+        }
+
+        .exec-step:last-child {
+            border-radius: 0 6px 6px 0;
+        }
+
+        .exec-step.active {
+            background: #1677ff;
+            color: #fff;
+            border-color: #1677ff;
+        }
+
+        .exec-arrow {
+            color: #d9d9d9;
+            font-size: 12px;
+            margin: 0 -1px;
+            z-index: 1;
+        }
+
+        .tool-select-card {
+            border: 1px solid #d9d9d9;
+            border-radius: 8px;
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-bottom: 8px;
+        }
+
+        .tool-select-card:hover {
+            border-color: #1677ff;
+            background: #f0f5ff;
+        }
+
+        .tool-select-card.selected {
+            border-color: #1677ff;
+            background: #e6f4ff;
+            box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.1);
+        }
+
+        .empty-rules {
+            text-align: center;
+            padding: 24px;
+            color: #bfbfbf;
+            background: #fafafa;
+            border-radius: 8px;
+            border: 1px dashed #d9d9d9;
+        }
+
+        .fail-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            background: #fff1f0;
+            color: #cf1322;
+            border: 1px solid #ffa39e;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { Layout, Menu, Card, Row, Col, Tag, Button, Space, Modal, Form, Input, Select, Tabs, Badge, Tooltip, Drawer, Collapse, Divider, Alert, Switch, Table, message, Typography, Empty, Breadcrumb, Popconfirm } = antd;
+        const { Header, Sider, Content } = Layout;
+        const { Text, Title, Paragraph } = Typography;
+        const { Option } = Select;
+        const { Panel } = Collapse;
+        const icons = window.icons;
+
+        // Mock pipeline data
+        const mockTools = [
+            {
+                mcp_id: 'feishu-contact-shared', service_name: '飞书通讯录（团队）',
+                name: 'search_employee', description: '按姓名或工号搜索员工基本信息',
+                security_level: 'filtered', operation: 'read', call_token: 'app',
+                filters: [{ type: 'row_filter', strategy: 'department_scope', params: { check_field: 'user_id', scope_source: 'caller_department_and_children' } }],
+                field_masks: [{ field: 'salary', action: 'remove' }, { field: 'id_card_number', action: 'remove' }, { field: 'home_address', action: 'remove' }],
+                desensitize_rules: [{ field: 'phone', strategy: 'phone_mask' }, { field: 'email', strategy: 'email_mask' }],
+                input_validators: [{ field: 'keyword', rule: 'not_empty' }]
+            },
+            {
+                mcp_id: 'feishu-contact-shared', service_name: '飞书通讯录（团队）',
+                name: 'get_user_info', description: '查询指定员工的详细信息',
+                security_level: 'filtered', operation: 'read', call_token: 'app',
+                filters: [{ type: 'row_filter', strategy: 'department_scope', params: { check_field: 'user_id' } }],
+                field_masks: [{ field: 'salary', action: 'remove' }, { field: 'bank_account', action: 'remove' }],
+                desensitize_rules: [{ field: 'phone', strategy: 'phone_mask' }, { field: 'name', strategy: 'name_mask' }],
+                input_validators: [{ field: 'user_id', rule: 'feishu_user_id' }]
+            },
+            {
+                mcp_id: 'feishu-calendar-shared', service_name: '飞书日历（团队）',
+                name: 'list_user_events', description: '查询指定同事在某时间段内的日程安排',
+                security_level: 'filtered', operation: 'read', call_token: 'app',
+                filters: [{ type: 'row_filter', strategy: 'department_scope', params: { check_field: 'user_id' } }],
+                field_masks: [{ field: 'private_notes', action: 'remove' }],
+                desensitize_rules: [],
+                input_validators: [{ field: 'user_id', rule: 'feishu_user_id' }, { field: 'start_time', rule: 'not_future_90d' }]
+            },
+            {
+                mcp_id: 'feishu-docs-shared', service_name: '飞书文档（团队）',
+                name: 'read_doc_content', description: '读取指定文档的内容',
+                security_level: 'filtered', operation: 'read', call_token: 'user',
+                filters: [],
+                field_masks: [],
+                desensitize_rules: [],
+                input_validators: [{ field: 'doc_id', rule: 'not_empty' }]
+            },
+            {
+                mcp_id: 'feishu-im-shared', service_name: '飞书 IM（消息）',
+                name: 'send_message', description: '向指定群或个人发送文本/富文本/卡片消息',
+                security_level: 'restricted', operation: 'write', call_token: 'app',
+                filters: [],
+                field_masks: [],
+                desensitize_rules: [],
+                input_validators: [{ field: 'chat_id', rule: 'not_empty' }, { field: 'content', rule: 'not_empty' }]
+            }
+        ];
+
+        const securityColors = { open: 'green', filtered: 'orange', restricted: 'red' };
+        const securityLabels = { open: '① 开放', filtered: '③ 过滤', restricted: '④ 受限' };
+        const strategyLabels = { department_scope: '部门范围过滤', resource_ownership: '资源归属校验', self_only: '仅限自己' };
+        const desensitizeLabels = { phone_mask: '手机号打码', email_mask: '邮箱打码', name_mask: '姓名打码', id_mask: '身份证打码' };
+        const desensitizePreviews = { phone_mask: '138****5678', email_mask: 'zha***@co.com', name_mask: '张*丰', id_mask: '310***********1234' };
+        const validatorLabels = { feishu_user_id: '飞书用户ID', not_empty: '非空校验', not_future_90d: '不超过90天' };
+
+        function App() {
+            const [current, setCurrent] = React.useState('pipeline');
+            const [tools, setTools] = React.useState(mockTools);
+            const [selectedTool, setSelectedTool] = React.useState(null);
+            const [drawerOpen, setDrawerOpen] = React.useState(false);
+            const [addMaskOpen, setAddMaskOpen] = React.useState(false);
+            const [addDesensOpen, setAddDesensOpen] = React.useState(false);
+            const [addFilterOpen, setAddFilterOpen] = React.useState(false);
+            const [maskForm] = Form.useForm();
+            const [desensForm] = Form.useForm();
+
+            const openToolConfig = (tool) => {
+                setSelectedTool({ ...tool });
+                setDrawerOpen(true);
+            };
+
+            const addFieldMask = () => {
+                maskForm.validateFields().then(values => {
+                    selectedTool.field_masks.push(values);
+                    setSelectedTool({ ...selectedTool });
+                    setAddMaskOpen(false);
+                    maskForm.resetFields();
+                    message.success('字段裁剪规则已添加');
+                });
+            };
+
+            const removeFieldMask = (idx) => {
+                selectedTool.field_masks.splice(idx, 1);
+                setSelectedTool({ ...selectedTool });
+                message.success('已移除');
+            };
+
+            const addDesensitize = () => {
+                desensForm.validateFields().then(values => {
+                    selectedTool.desensitize_rules.push(values);
+                    setSelectedTool({ ...selectedTool });
+                    setAddDesensOpen(false);
+                    desensForm.resetFields();
+                    message.success('脱敏规则已添加');
+                });
+            };
+
+            const removeDesensitize = (idx) => {
+                selectedTool.desensitize_rules.splice(idx, 1);
+                setSelectedTool({ ...selectedTool });
+                message.success('已移除');
+            };
+
+            const toolColumns = [
+                {
+                    title: '工具', width: 220,
+                    render: (_, r) => React.createElement('div', null,
+                        React.createElement('div', { style: { fontWeight: 600, fontSize: 13, fontFamily: 'SF Mono, Monaco, monospace' } }, r.name),
+                        React.createElement(Text, { type: 'secondary', style: { fontSize: 12 } }, r.description)
+                    )
+                },
+                {
+                    title: '所属服务', dataIndex: 'service_name', width: 160,
+                    render: v => React.createElement(Text, { type: 'secondary', style: { fontSize: 12 } }, v)
+                },
+                {
+                    title: '令牌', dataIndex: 'call_token', width: 80, align: 'center',
+                    render: v => React.createElement(Tag, { color: v === 'user' ? 'blue' : 'default' }, v === 'user' ? 'UAT' : 'TAT')
+                },
+                {
+                    title: '安全等级', dataIndex: 'security_level', width: 100, align: 'center',
+                    render: v => React.createElement(Tag, { color: securityColors[v] }, securityLabels[v])
+                },
+                {
+                    title: '行过滤', width: 110, align: 'center',
+                    render: (_, r) => r.filters.length > 0
+                        ? React.createElement(Tag, { color: 'green' }, r.filters.length + ' 条规则')
+                        : React.createElement(Text, { type: 'secondary', style: { fontSize: 12 } },
+                            r.call_token === 'user' ? 'UAT 兜底' : '—')
+                },
+                {
+                    title: '字段裁剪', width: 100, align: 'center',
+                    render: (_, r) => r.field_masks.length > 0
+                        ? React.createElement(Tag, { color: 'orange' }, r.field_masks.length + ' 个字段')
+                        : React.createElement(Text, { type: 'secondary', style: { fontSize: 12 } }, '全量返回')
+                },
+                {
+                    title: '脱敏', width: 90, align: 'center',
+                    render: (_, r) => r.desensitize_rules.length > 0
+                        ? React.createElement(Tag, { color: 'purple' }, r.desensitize_rules.length + ' 个字段')
+                        : React.createElement(Text, { type: 'secondary', style: { fontSize: 12 } }, '不脱敏')
+                },
+                {
+                    title: '操作', width: 80, fixed: 'right', align: 'center',
+                    render: (_, r) => React.createElement(Button, { type: 'link', size: 'small', onClick: () => openToolConfig(r) }, '配置')
+                }
+            ];
+
+            // Render pipeline config drawer
+            const renderPipelineDrawer = () => {
+                if (!selectedTool) return null;
+                const t = selectedTool;
+
+                return React.createElement(Drawer, {
+                    title: React.createElement('div', null,
+                        React.createElement('div', { style: { fontWeight: 600 } }, '管道配置 · ' + t.name),
+                        React.createElement(Text, { type: 'secondary', style: { fontSize: 12 } }, t.service_name)
+                    ),
+                    width: 680, open: drawerOpen, onClose: () => setDrawerOpen(false),
+                    extra: React.createElement(Button, { type: 'primary', onClick: () => { setDrawerOpen(false); message.success('管道配置已保存'); } }, '保存')
+                },
+                    // Execution order visualization
+                    React.createElement(Alert, {
+                        message: '管道执行顺序',
+                        description: React.createElement('div', { className: 'exec-order', style: { marginTop: 8 } },
+                            ['令牌选择', '入参校验', '→ API 调用 →', '行过滤', '字段裁剪', '脱敏', '审计'].map((s, i) =>
+                                React.createElement('div', {
+                                    key: i,
+                                    className: 'exec-step' + (i === 2 ? '' : ''),
+                                    style: i === 2 ? { background: '#f6ffed', borderColor: '#b7eb8f', color: '#389e0d', fontStyle: 'italic' } : {}
+                                }, s)
+                            )
+                        ),
+                        type: 'info', showIcon: true, style: { marginBottom: 24 }
+                    }),
+
+                    // Section 1: Token selection
+                    React.createElement(Card, { size: 'small', title: React.createElement(Space, null, React.createElement(icons.SwapOutlined), '前置 · 令牌选择'), style: { marginBottom: 16 } },
+                        React.createElement(Row, { gutter: 16 },
+                            React.createElement(Col, { span: 12 },
+                                React.createElement(Text, { type: 'secondary', style: { fontSize: 12 } }, '令牌模式'),
+                                React.createElement('div', { style: { marginTop: 4 } },
+                                    React.createElement(Select, { value: t.call_token, style: { width: '100%' }, onChange: v => { t.call_token = v; setSelectedTool({ ...t }); } },
+                                        React.createElement(Option, { value: 'app' }, 'TAT（超级应用令牌）'),
+                                        React.createElement(Option, { value: 'user' }, 'UAT（调用者用户令牌）')
+                                    )
+                                )
+                            ),
+                            React.createElement(Col, { span: 12 },
+                                React.createElement(Text, { type: 'secondary', style: { fontSize: 12 } }, '说明'),
+                                React.createElement('div', { style: { marginTop: 8, fontSize: 12 } },
+                                    t.call_token === 'user'
+                                        ? React.createElement(Alert, { message: '使用调用者的 UAT 调 API，飞书 ACL 天然兜底', type: 'success', showIcon: true, banner: true })
+                                        : React.createElement(Alert, { message: '使用超级应用 TAT 调 API，需配置行过滤', type: 'warning', showIcon: true, banner: true })
+                                )
+                            )
+                        )
+                    ),
+
+                    // Section 2: Input validators
+                    React.createElement(Card, { size: 'small', title: React.createElement(Space, null, React.createElement(icons.CheckCircleOutlined), '前置 · 入参校验'), style: { marginBottom: 16 } },
+                        t.input_validators.length > 0
+                            ? t.input_validators.map((v, i) =>
+                                React.createElement('div', { key: i, className: 'rule-row' },
+                                    React.createElement(Tag, { color: 'blue' }, v.field),
+                                    React.createElement(Tag, { bordered: false }, validatorLabels[v.rule] || v.rule),
+                                    React.createElement('div', { style: { flex: 1 } }),
+                                    React.createElement(Button, { type: 'text', size: 'small', danger: true, icon: React.createElement(icons.DeleteOutlined) })
+                                ))
+                            : React.createElement('div', { className: 'empty-rules' }, '暂无入参校验规则'),
+                        React.createElement(Button, { type: 'dashed', block: true, icon: React.createElement(icons.PlusOutlined), style: { marginTop: 8 } }, '添加校验规则')
+                    ),
+
+                    React.createElement(Divider, { dashed: true },
+                        React.createElement(Text, { type: 'secondary', style: { fontSize: 12 } }, '─── API 调用 ───')
+                    ),
+
+                    // Section 3: Row filters
+                    React.createElement(Card, {
+                        size: 'small', style: { marginBottom: 16 },
+                        title: React.createElement(Space, null,
+                            React.createElement(icons.FilterOutlined),
+                            '后置 · 行过滤',
+                            React.createElement('span', { className: 'fail-badge' }, '⛔ fail-close')
+                        )
+                    },
+                        t.call_token === 'user'
+                            ? React.createElement(Alert, { message: '当前令牌模式为 UAT，飞书权限体系已天然限制返回范围，无需额外行过滤', type: 'success', showIcon: true })
+                            : React.createElement('div', null,
+                                t.filters.length > 0
+                                    ? t.filters.map((f, i) =>
+                                        React.createElement('div', { key: i, className: 'rule-row', style: { background: '#f6ffed', borderColor: '#b7eb8f' } },
+                                            React.createElement(Tag, { color: 'green' }, strategyLabels[f.strategy] || f.strategy),
+                                            React.createElement(Text, { style: { fontSize: 12 } }, 'check_field = '),
+                                            React.createElement(Tag, { color: 'blue' }, f.params?.check_field || '—'),
+                                            React.createElement('div', { style: { flex: 1 } }),
+                                            React.createElement(Tooltip, { title: '数据源：飞书通讯录 API + Redis 缓存 1h' },
+                                                React.createElement(Tag, { bordered: false, color: 'default' }, 'Redis 1h')
+                                            ),
+                                            React.createElement(Button, { type: 'text', size: 'small', danger: true, icon: React.createElement(icons.DeleteOutlined) })
+                                        ))
+                                    : React.createElement('div', { className: 'empty-rules' },
+                                        React.createElement('div', null, '⚠️ TAT 工具未配置行过滤'),
+                                        React.createElement('div', { style: { fontSize: 12, marginTop: 4 } }, '将返回全量数据（不推荐）')
+                                    ),
+                                React.createElement(Button, {
+                                    type: 'dashed', block: true, icon: React.createElement(icons.PlusOutlined), style: { marginTop: 8 },
+                                    onClick: () => {
+                                        t.filters.push({ type: 'row_filter', strategy: 'department_scope', params: { check_field: 'user_id' } });
+                                        setSelectedTool({ ...t });
+                                        message.success('已添加 department_scope 行过滤');
+                                    }
+                                }, '添加行过滤规则')
+                            )
+                    ),
+
+                    // Section 4: Field masks
+                    React.createElement(Card, {
+                        size: 'small', style: { marginBottom: 16 },
+                        title: React.createElement(Space, null, React.createElement(icons.EyeInvisibleOutlined), '后置 · 字段裁剪'),
+                        extra: React.createElement(Button, { type: 'link', size: 'small', icon: React.createElement(icons.PlusOutlined), onClick: () => setAddMaskOpen(true) }, '添加')
+                    },
+                        React.createElement(Alert, { message: '默认返回所有字段，以下字段将被移除后再返回给工作流', type: 'info', showIcon: true, banner: true, style: { marginBottom: 12 } }),
+                        t.field_masks.length > 0
+                            ? t.field_masks.map((m, i) =>
+                                React.createElement('div', { key: i, className: 'rule-row' },
+                                    React.createElement(Tag, { color: 'orange' }, m.field),
+                                    React.createElement(Tag, { bordered: false, color: 'red' }, '移除'),
+                                    React.createElement('div', { style: { flex: 1 } }),
+                                    React.createElement(Popconfirm, { title: '确定移除？', onConfirm: () => removeFieldMask(i) },
+                                        React.createElement(Button, { type: 'text', size: 'small', danger: true, icon: React.createElement(icons.DeleteOutlined) })
+                                    )
+                                ))
+                            : React.createElement('div', { className: 'empty-rules' }, '所有字段全量返回（未配置裁剪规则）')
+                    ),
+
+                    // Section 5: Desensitize
+                    React.createElement(Card, {
+                        size: 'small', style: { marginBottom: 16 },
+                        title: React.createElement(Space, null, React.createElement(icons.SafetyOutlined), '后置 · 脱敏'),
+                        extra: React.createElement(Button, { type: 'link', size: 'small', icon: React.createElement(icons.PlusOutlined), onClick: () => setAddDesensOpen(true) }, '添加')
+                    },
+                        React.createElement(Alert, { message: '默认不脱敏，以下字段将按策略打码后返回', type: 'info', showIcon: true, banner: true, style: { marginBottom: 12 } }),
+                        t.desensitize_rules.length > 0
+                            ? t.desensitize_rules.map((d, i) =>
+                                React.createElement('div', { key: i, className: 'rule-row' },
+                                    React.createElement(Tag, { color: 'purple' }, d.field),
+                                    React.createElement(Tag, { bordered: false }, desensitizeLabels[d.strategy] || d.strategy),
+                                    React.createElement('span', { className: 'preview-text' }, '预览: ' + (desensitizePreviews[d.strategy] || '—')),
+                                    React.createElement('div', { style: { flex: 1 } }),
+                                    React.createElement(Popconfirm, { title: '确定移除？', onConfirm: () => removeDesensitize(i) },
+                                        React.createElement(Button, { type: 'text', size: 'small', danger: true, icon: React.createElement(icons.DeleteOutlined) })
+                                    )
+                                ))
+                            : React.createElement('div', { className: 'empty-rules' }, '所有字段原文返回（未配置脱敏规则）')
+                    ),
+
+                    // Section 6: Audit
+                    React.createElement(Card, {
+                        size: 'small',
+                        title: React.createElement(Space, null, React.createElement(icons.FileSearchOutlined), '后置 · 审计级别')
+                    },
+                        React.createElement(Row, { gutter: 16 },
+                            React.createElement(Col, { span: 12 },
+                                React.createElement(Select, { value: t.security_level === 'restricted' ? 'enhanced' : 'standard', style: { width: '100%' }, disabled: t.security_level === 'restricted' },
+                                    React.createElement(Option, { value: 'standard' }, '标准审计（who + when + what + result_count）'),
+                                    React.createElement(Option, { value: 'enhanced' }, '强审计（+ 参数哈希 + 结果摘要 + 告警）')
+                                )
+                            ),
+                            React.createElement(Col, { span: 12 },
+                                t.security_level === 'restricted'
+                                    ? React.createElement(Alert, { message: '④层受限工具强制使用强审计', type: 'warning', showIcon: true, banner: true })
+                                    : React.createElement(Alert, { message: '③层过滤工具使用标准审计', type: 'info', showIcon: true, banner: true })
+                            )
+                        )
+                    )
+                );
+            };
+
+            return React.createElement(Layout, { style: { minHeight: '100vh' } },
+                React.createElement(Sider, { width: 220, theme: 'dark', style: { boxShadow: '2px 0 8px rgba(0,0,0,0.15)' } },
+                    React.createElement('div', { style: { height: 64, display: 'flex', alignItems: 'center' } },
+                        React.createElement('div', { className: 'logo' },
+                            React.createElement('div', { className: 'logo-icon' }, 'M'),
+                            'MCP 中台'
+                        )
+                    ),
+                    React.createElement(Menu, {
+                        theme: 'dark', mode: 'inline', selectedKeys: [current],
+                        onClick: e => setCurrent(e.key),
+                        items: [
+                            { key: 'dashboard', icon: React.createElement(icons.DashboardOutlined), label: '概览' },
+                            { key: 'services', icon: React.createElement(icons.AppstoreOutlined), label: 'MCP 服务管理' },
+                            { key: 'keys', icon: React.createElement(icons.KeyOutlined), label: 'KEY 管理' },
+                            { key: 'pipeline', icon: React.createElement(icons.FilterOutlined), label: '数据管道' },
+                            { key: 'audit', icon: React.createElement(icons.FileSearchOutlined), label: '审计日志' },
+                            { key: 'alerts', icon: React.createElement(icons.AlertOutlined), label: '告警配置' },
+                            { type: 'divider' },
+                            { key: 'settings', icon: React.createElement(icons.SettingOutlined), label: '系统设置' }
+                        ]
+                    })
+                ),
+                React.createElement(Layout, null,
+                    React.createElement(Header, { style: { background: '#fff', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f0f0f0', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' } },
+                        React.createElement(Breadcrumb, { items: [{ title: 'MCP 中台' }, { title: '数据管道' }] }),
+                        React.createElement(Space, null,
+                            React.createElement(Tag, { color: 'green' }, '运行中'),
+                            React.createElement(Text, { type: 'secondary' }, '管理员：平台管理员')
+                        )
+                    ),
+                    React.createElement(Content, { style: { padding: 24 } },
+                        // Page header
+                        React.createElement('div', { style: { marginBottom: 24 } },
+                            React.createElement(Title, { level: 4, style: { marginBottom: 4 } }, '数据管道配置'),
+                            React.createElement(Text, { type: 'secondary' }, '配置工具级的令牌选择、行过滤、字段裁剪和脱敏规则。')
+                        ),
+                        // Pipeline info
+                        React.createElement(Alert, {
+                            message: '管道执行原则',
+                            description: React.createElement(Space, { direction: 'vertical', size: 4 },
+                                React.createElement(Text, null, '• 执行顺序：令牌选择 → 入参校验 → API 调用 → 行过滤 → 字段裁剪 → 脱敏 → 审计'),
+                                React.createElement(Text, null, '• 默认行为：所有字段全量返回、不脱敏。需要移除或脱敏的字段单独配置'),
+                                React.createElement(Text, null, React.createElement('span', null, '• 出错策略：'), React.createElement('span', { className: 'fail-badge', style: { marginLeft: 4 } }, '⛔ fail-close'), ' 管道任一环节出错 → 不返回数据 → 返回系统错误')
+                            ),
+                            type: 'info', showIcon: true, style: { marginBottom: 24 }
+                        }),
+                        // Stats
+                        React.createElement(Row, { gutter: 16, style: { marginBottom: 24 } },
+                            [
+                                { label: '已配置管道的工具', value: tools.filter(t => t.filters.length > 0 || t.field_masks.length > 0 || t.desensitize_rules.length > 0).length, color: '#1677ff' },
+                                { label: '行过滤规则', value: tools.reduce((s, t) => s + t.filters.length, 0), color: '#52c41a' },
+                                { label: '字段裁剪规则', value: tools.reduce((s, t) => s + t.field_masks.length, 0), color: '#fa8c16' },
+                                { label: '脱敏规则', value: tools.reduce((s, t) => s + t.desensitize_rules.length, 0), color: '#722ed1' }
+                            ].map((s, i) => React.createElement(Col, { span: 6, key: i },
+                                React.createElement(Card, { bodyStyle: { padding: 16 } },
+                                    React.createElement('div', { style: { fontSize: 12, color: '#8c8c8c', marginBottom: 4 } }, s.label),
+                                    React.createElement('div', { style: { fontSize: 28, fontWeight: 600, color: s.color } }, s.value)
+                                )
+                            ))
+                        ),
+                        // Tool table
+                        React.createElement(Card, { bodyStyle: { padding: 0 } },
+                            React.createElement(Table, {
+                                columns: toolColumns, dataSource: tools, rowKey: r => r.mcp_id + '.' + r.name,
+                                pagination: false, scroll: { x: 1000 }
+                            })
+                        ),
+                        // Pipeline config drawer
+                        renderPipelineDrawer(),
+                        // Add field mask modal
+                        React.createElement(Modal, {
+                            title: '添加字段裁剪规则', open: addMaskOpen, width: 400,
+                            onCancel: () => { setAddMaskOpen(false); maskForm.resetFields(); },
+                            onOk: addFieldMask, okText: '添加'
+                        },
+                            React.createElement(Alert, { message: '添加后该字段将从 API 返回结果中移除', type: 'warning', showIcon: true, style: { marginBottom: 16 } }),
+                            React.createElement(Form, { form: maskForm, layout: 'vertical' },
+                                React.createElement(Form.Item, { name: 'field', label: '字段路径', rules: [{ required: true, message: '请输入字段名' }] },
+                                    React.createElement(Input, { placeholder: '例如：salary, home_address, id_card_number' })
+                                ),
+                                React.createElement(Form.Item, { name: 'action', label: '操作', initialValue: 'remove' },
+                                    React.createElement(Select, null,
+                                        React.createElement(Option, { value: 'remove' }, '移除（不返回该字段）')
+                                    )
+                                )
+                            )
+                        ),
+                        // Add desensitize modal
+                        React.createElement(Modal, {
+                            title: '添加脱敏规则', open: addDesensOpen, width: 400,
+                            onCancel: () => { setAddDesensOpen(false); desensForm.resetFields(); },
+                            onOk: addDesensitize, okText: '添加'
+                        },
+                            React.createElement(Alert, { message: '添加后该字段将按脱敏策略打码返回', type: 'info', showIcon: true, style: { marginBottom: 16 } }),
+                            React.createElement(Form, { form: desensForm, layout: 'vertical' },
+                                React.createElement(Form.Item, { name: 'field', label: '字段路径', rules: [{ required: true, message: '请输入字段名' }] },
+                                    React.createElement(Input, { placeholder: '例如：phone, email, name' })
+                                ),
+                                React.createElement(Form.Item, { name: 'strategy', label: '脱敏策略', rules: [{ required: true }], initialValue: 'phone_mask' },
+                                    React.createElement(Select, null,
+                                        React.createElement(Option, { value: 'phone_mask' }, '手机号打码 — 138****5678'),
+                                        React.createElement(Option, { value: 'email_mask' }, '邮箱打码 — zha***@co.com'),
+                                        React.createElement(Option, { value: 'name_mask' }, '姓名打码 — 张*丰'),
+                                        React.createElement(Option, { value: 'id_mask' }, '身份证打码 — 310***********1234')
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dify - MCP 能力管理</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #155EEF;
+            --primary-hover: #004AEB;
+            --primary-light: #EFF4FF;
+            --primary-border: #B2CCFF;
+            --bg: #F9FAFB;
+            --white: #FFFFFF;
+            --gray-25: #FCFCFD;
+            --gray-50: #F9FAFB;
+            --gray-100: #F2F4F7;
+            --gray-200: #EAECF0;
+            --gray-300: #D0D5DD;
+            --gray-400: #98A2B3;
+            --gray-500: #667085;
+            --gray-600: #475467;
+            --gray-700: #344054;
+            --gray-800: #1D2939;
+            --gray-900: #101828;
+            --success: #12B76A;
+            --success-light: #ECFDF3;
+            --success-border: #A6F4C5;
+            --warning: #F79009;
+            --warning-light: #FFFAEB;
+            --warning-border: #FEDF89;
+            --error: #F04438;
+            --error-light: #FEF3F2;
+            --purple: #7A5AF8;
+            --purple-light: #F4F3FF;
+            --purple-border: #D9D6FE;
+            --radius-sm: 6px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+            --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.05);
+            --shadow-sm: 0 1px 3px rgba(16, 24, 40, 0.1), 0 1px 2px rgba(16, 24, 40, 0.06);
+            --shadow-md: 0 4px 8px -2px rgba(16, 24, 40, 0.1), 0 2px 4px -2px rgba(16, 24, 40, 0.06);
+            --shadow-lg: 0 12px 16px -4px rgba(16, 24, 40, 0.08), 0 4px 6px -2px rgba(16, 24, 40, 0.03);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--gray-900);
+        }
+
+        /* Dify-style sidebar */
+        .sidebar {
+            width: 240px;
+            height: 100vh;
+            background: var(--white);
+            border-right: 1px solid var(--gray-200);
+            position: fixed;
+            left: 0;
+            top: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-logo {
+            width: 28px;
+            height: 28px;
+            background: linear-gradient(135deg, #2970FF, #6938EF);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-weight: 700;
+            font-size: 12px;
+        }
+
+        .sidebar-title {
+            font-size: 15px;
+            font-weight: 600;
+            color: var(--gray-900);
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 8px;
+            overflow-y: auto;
+        }
+
+        .nav-section {
+            margin-bottom: 4px;
+        }
+
+        .nav-section-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--gray-400);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 8px 12px 4px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-size: 13px;
+            color: var(--gray-600);
+            transition: all 0.15s;
+        }
+
+        .nav-item:hover {
+            background: var(--gray-100);
+            color: var(--gray-900);
+        }
+
+        .nav-item.active {
+            background: var(--primary-light);
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .nav-icon {
+            width: 18px;
+            height: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0.7;
+        }
+
+        .nav-item.active .nav-icon {
+            opacity: 1;
+        }
+
+        .nav-badge {
+            margin-left: auto;
+            background: var(--primary);
+            color: #fff;
+            font-size: 10px;
+            font-weight: 600;
+            padding: 1px 6px;
+            border-radius: 10px;
+        }
+
+        /* Main content */
+        .main {
+            margin-left: 240px;
+            min-height: 100vh;
+        }
+
+        .topbar {
+            height: 56px;
+            background: var(--white);
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+        }
+
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .topbar-breadcrumb {
+            font-size: 13px;
+            color: var(--gray-400);
+        }
+
+        .topbar-breadcrumb span {
+            color: var(--gray-900);
+            font-weight: 500;
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .space-badge {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            background: var(--gray-100);
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--gray-600);
+        }
+
+        .space-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--success);
+        }
+
+        .content {
+            padding: 24px;
+            max-width: 960px;
+        }
+
+        /* Page header */
+        .page-header {
+            margin-bottom: 24px;
+        }
+
+        .page-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 4px;
+        }
+
+        .page-desc {
+            font-size: 13px;
+            color: var(--gray-500);
+        }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid var(--gray-200);
+            margin-bottom: 24px;
+        }
+
+        .tab {
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--gray-500);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.15s;
+        }
+
+        .tab:hover {
+            color: var(--gray-700);
+        }
+
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        /* Stats row */
+        .stats-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+
+        .stat-box {
+            flex: 1;
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-md);
+            padding: 16px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--gray-500);
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 22px;
+            font-weight: 600;
+        }
+
+        /* Card */
+        .card {
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .card-body {
+            padding: 0;
+        }
+
+        /* Service list */
+        .service-item {
+            display: flex;
+            align-items: center;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--gray-100);
+            transition: background 0.15s;
+            cursor: pointer;
+        }
+
+        .service-item:last-child {
+            border-bottom: none;
+        }
+
+        .service-item:hover {
+            background: var(--gray-25);
+        }
+
+        .service-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            margin-right: 12px;
+            flex-shrink: 0;
+        }
+
+        .service-icon.tat {
+            background: var(--purple-light);
+            color: var(--purple);
+        }
+
+        .service-icon.uat {
+            background: var(--primary-light);
+            color: var(--primary);
+        }
+
+        .service-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .service-name {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-900);
+            margin-bottom: 2px;
+        }
+
+        .service-desc {
+            font-size: 12px;
+            color: var(--gray-500);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .service-meta {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .badge-purple {
+            background: var(--purple-light);
+            color: var(--purple);
+            border: 1px solid var(--purple-border);
+        }
+
+        .badge-blue {
+            background: var(--primary-light);
+            color: var(--primary);
+            border: 1px solid var(--primary-border);
+        }
+
+        .badge-green {
+            background: var(--success-light);
+            color: var(--success);
+            border: 1px solid var(--success-border);
+        }
+
+        .badge-yellow {
+            background: var(--warning-light);
+            color: var(--warning);
+            border: 1px solid var(--warning-border);
+        }
+
+        .tools-count {
+            font-size: 12px;
+            color: var(--gray-400);
+            margin-left: 8px;
+        }
+
+        /* Button */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid var(--gray-300);
+            background: var(--white);
+            color: var(--gray-700);
+            transition: all 0.15s;
+        }
+
+        .btn:hover {
+            background: var(--gray-50);
+            border-color: var(--gray-400);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+            border-color: var(--primary);
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        .btn-sm {
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+
+        .btn-ghost {
+            border: none;
+            background: none;
+            color: var(--gray-500);
+        }
+
+        .btn-ghost:hover {
+            color: var(--gray-700);
+            background: var(--gray-100);
+        }
+
+        /* Modal overlay */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.4);
+            display: none;
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(2px);
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            width: 560px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-lg);
+            animation: modalIn 0.2s ease-out;
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--gray-400);
+            transition: all 0.15s;
+            border: none;
+            background: none;
+            font-size: 18px;
+        }
+
+        .modal-close:hover {
+            background: var(--gray-100);
+            color: var(--gray-600);
+        }
+
+        .modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--gray-700);
+            margin-bottom: 6px;
+        }
+
+        .form-hint {
+            font-size: 12px;
+            color: var(--gray-400);
+            margin-top: 4px;
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid var(--gray-300);
+            border-radius: var(--radius-sm);
+            font-size: 13px;
+            color: var(--gray-900);
+            outline: none;
+            transition: border-color 0.15s;
+            font-family: inherit;
+        }
+
+        .form-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(21, 94, 239, 0.1);
+        }
+
+        .form-input.disabled {
+            background: var(--gray-100);
+            color: var(--gray-500);
+            cursor: not-allowed;
+        }
+
+        textarea.form-input {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        /* Cascade selector */
+        .cascade-group {
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+        }
+
+        .cascade-header {
+            padding: 10px 14px;
+            background: var(--gray-50);
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+
+        .cascade-header:hover {
+            background: var(--gray-100);
+        }
+
+        .cascade-header.expanded {
+            background: var(--primary-light);
+        }
+
+        .cascade-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cascade-check {
+            width: 16px;
+            height: 16px;
+            border: 1.5px solid var(--gray-300);
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s;
+            flex-shrink: 0;
+        }
+
+        .cascade-check.checked {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .cascade-check.checked::after {
+            content: '✓';
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .cascade-check.partial {
+            background: var(--primary-light);
+            border-color: var(--primary);
+        }
+
+        .cascade-check.partial::after {
+            content: '—';
+            color: var(--primary);
+            font-size: 10px;
+            font-weight: 700;
+        }
+
+        .cascade-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--gray-800);
+        }
+
+        .cascade-arrow {
+            color: var(--gray-400);
+            transition: transform 0.2s;
+            font-size: 12px;
+        }
+
+        .cascade-arrow.expanded {
+            transform: rotate(180deg);
+        }
+
+        .cascade-tools {
+            display: none;
+            border-top: 1px solid var(--gray-200);
+        }
+
+        .cascade-tools.show {
+            display: block;
+        }
+
+        .tool-row {
+            display: flex;
+            align-items: flex-start;
+            padding: 10px 14px 10px 42px;
+            border-bottom: 1px solid var(--gray-100);
+            transition: background 0.15s;
+        }
+
+        .tool-row:last-child {
+            border-bottom: none;
+        }
+
+        .tool-row:hover {
+            background: var(--gray-25);
+        }
+
+        .tool-info {
+            flex: 1;
+            margin-left: 8px;
+        }
+
+        .tool-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--gray-800);
+            font-family: 'SF Mono', Monaco, monospace;
+            margin-bottom: 2px;
+        }
+
+        .tool-desc {
+            font-size: 11px;
+            color: var(--gray-500);
+            line-height: 1.4;
+        }
+
+        .tool-tags {
+            display: flex;
+            gap: 4px;
+            margin-left: 8px;
+            flex-shrink: 0;
+            align-self: center;
+        }
+
+        .tag {
+            padding: 1px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: 500;
+        }
+
+        .tag-filtered {
+            background: #FFF7ED;
+            color: #C4320A;
+        }
+
+        .tag-restricted {
+            background: #FEF3F2;
+            color: #B42318;
+        }
+
+        .tag-read {
+            background: var(--gray-100);
+            color: var(--gray-600);
+        }
+
+        .tag-write {
+            background: #FEF3F2;
+            color: var(--error);
+        }
+
+        /* Key status card */
+        .key-card {
+            border: 1px solid var(--success-border);
+            background: var(--success-light);
+            border-radius: var(--radius-md);
+            padding: 14px 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .key-card .key-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: var(--success);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .key-card .key-info {
+            flex: 1;
+        }
+
+        .key-card .key-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+
+        .key-card .key-sub {
+            font-size: 11px;
+            color: var(--gray-500);
+            margin-top: 2px;
+        }
+
+        .key-actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        /* Alert */
+        .alert {
+            padding: 10px 14px;
+            border-radius: var(--radius-sm);
+            font-size: 12px;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .alert-info {
+            background: var(--primary-light);
+            color: var(--primary);
+            border: 1px solid var(--primary-border);
+        }
+
+        .alert-warning {
+            background: var(--warning-light);
+            color: #93370D;
+            border: 1px solid var(--warning-border);
+        }
+
+        .alert-icon {
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        /* Approved tools table */
+        .approved-tools {
+            width: 100%;
+        }
+
+        .approved-tools th {
+            text-align: left;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--gray-500);
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            padding: 8px 12px;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .approved-tools td {
+            font-size: 12px;
+            color: var(--gray-700);
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--gray-100);
+        }
+
+        .approved-tools tr:last-child td {
+            border-bottom: none;
+        }
+
+        .approved-tools .tool-name-cell {
+            font-family: 'SF Mono', Monaco, monospace;
+            font-weight: 500;
+        }
+
+        /* Pending card */
+        .pending-card {
+            border: 1px solid var(--warning-border);
+            background: var(--warning-light);
+            border-radius: var(--radius-md);
+            padding: 14px 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .pending-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: var(--warning);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .pending-info {
+            flex: 1;
+        }
+
+        .pending-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+
+        .pending-sub {
+            font-size: 11px;
+            color: var(--gray-500);
+            margin-top: 2px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">D</div>
+            <div class="sidebar-title">Dify</div>
+        </div>
+        <div class="sidebar-nav">
+            <div class="nav-section">
+                <div class="nav-section-label">工作空间</div>
+                <div class="nav-item">
+                    <div class="nav-icon">📱</div> 应用
+                </div>
+                <div class="nav-item">
+                    <div class="nav-icon">🔄</div> 工作流
+                </div>
+                <div class="nav-item">
+                    <div class="nav-icon">📚</div> 知识库
+                </div>
+                <div class="nav-item">
+                    <div class="nav-icon">🔌</div> 插件
+                </div>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-label">工具</div>
+                <div class="nav-item active">
+                    <div class="nav-icon">🧩</div> MCP 服务
+                    <span class="nav-badge">7</span>
+                </div>
+                <div class="nav-item">
+                    <div class="nav-icon">🔧</div> 自定义工具
+                </div>
+                <div class="nav-item">
+                    <div class="nav-icon">📦</div> API 扩展
+                </div>
+            </div>
+            <div class="nav-section">
+                <div class="nav-section-label">设置</div>
+                <div class="nav-item">
+                    <div class="nav-icon">👥</div> 成员管理
+                </div>
+                <div class="nav-item">
+                    <div class="nav-icon">🤖</div> 模型供应商
+                </div>
+                <div class="nav-item">
+                    <div class="nav-icon">⚙️</div> 空间设置
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main -->
+    <div class="main">
+        <div class="topbar">
+            <div class="topbar-left">
+                <div class="topbar-breadcrumb">工具 / <span>MCP 服务</span></div>
+            </div>
+            <div class="topbar-right">
+                <div class="space-badge">
+                    <div class="space-dot"></div> 产品部工作空间
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="page-header">
+                <div class="page-title">MCP 服务</div>
+                <div class="page-desc">管理当前空间连接的 MCP 服务及能力权限</div>
+            </div>
+
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab(this, 'enabled')">已启用 (4)</div>
+                <div class="tab" onclick="switchTab(this, 'available')">可用市场 (6)</div>
+                <div class="tab" onclick="switchTab(this, 'keys')">能力管理</div>
+            </div>
+
+            <!-- Tab: 已启用 -->
+            <div id="tab-enabled">
+                <div class="stats-row">
+                    <div class="stat-box">
+                        <div class="stat-label">UAT 服务（开箱即用）</div>
+                        <div class="stat-value" style="color:var(--primary)">2</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">TAT 服务（已授权）</div>
+                        <div class="stat-value" style="color:var(--purple)">2</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-label">可用工具总数</div>
+                        <div class="stat-value" style="color:var(--gray-700)">9</div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">UAT 服务（个人）</div>
+                        <span style="font-size:11px;color:var(--gray-400)">自动启用，无需 KEY</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="service-item">
+                            <div class="service-icon uat">📅</div>
+                            <div class="service-info">
+                                <div class="service-name">飞书日历（个人）</div>
+                                <div class="service-desc">查询和管理个人日程，UAT 天然隔离</div>
+                            </div>
+                            <div class="service-meta">
+                                <span class="badge badge-blue">UAT</span>
+                                <span class="badge badge-green">① 开放</span>
+                                <span class="tools-count">2 工具</span>
+                            </div>
+                        </div>
+                        <div class="service-item">
+                            <div class="service-icon uat">📄</div>
+                            <div class="service-info">
+                                <div class="service-name">飞书文档（个人）</div>
+                                <div class="service-desc">搜索和读取个人有权限的文档</div>
+                            </div>
+                            <div class="service-meta">
+                                <span class="badge badge-blue">UAT</span>
+                                <span class="badge badge-green">① 开放</span>
+                                <span class="tools-count">2 工具</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div style="height:16px"></div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">TAT 服务（共享）</div>
+                        <span style="font-size:11px;color:var(--gray-400)">需 KEY 授权</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="service-item">
+                            <div class="service-icon tat">📅</div>
+                            <div class="service-info">
+                                <div class="service-name">飞书日历（团队）</div>
+                                <div class="service-desc">查询团队成员排期和忙闲状态，按部门范围过滤</div>
+                            </div>
+                            <div class="service-meta">
+                                <span class="badge badge-purple">TAT</span>
+                                <span class="badge badge-yellow">③ 过滤</span>
+                                <span class="tools-count">3 工具</span>
+                            </div>
+                        </div>
+                        <div class="service-item">
+                            <div class="service-icon tat">👥</div>
+                            <div class="service-info">
+                                <div class="service-name">飞书通讯录（团队）</div>
+                                <div class="service-desc">搜索员工信息、查询部门结构</div>
+                            </div>
+                            <div class="service-meta">
+                                <span class="badge badge-purple">TAT</span>
+                                <span class="badge badge-yellow">③ 过滤</span>
+                                <span class="tools-count">2 工具</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: 能力管理 -->
+            <div id="tab-keys" style="display:none">
+                <!-- Current KEY -->
+                <div class="key-card">
+                    <div class="key-icon">🔑</div>
+                    <div class="key-info">
+                        <div class="key-title">KEY-001 · 有效</div>
+                        <div class="key-sub">覆盖 2 个 TAT 服务 · 5 个工具 · 申请于 2026-03-20</div>
+                    </div>
+                    <div class="key-actions">
+                        <button class="btn btn-sm" onclick="openModal()">+ 追加能力</button>
+                        <button class="btn btn-sm" style="color:var(--error);border-color:#FDA29B;"
+                            onclick="alert('确认撤销？')">撤销</button>
+                    </div>
+                </div>
+
+                <!-- Pending -->
+                <div class="pending-card">
+                    <div class="pending-icon">⏳</div>
+                    <div class="pending-info">
+                        <div class="pending-title">飞书 IM（消息）· 审批中</div>
+                        <div class="pending-sub">申请编号 #AP20260324002 · 多级审批（含④层工具）· 提交于 2026-03-24</div>
+                    </div>
+                    <button class="btn btn-sm btn-ghost">查看详情</button>
+                </div>
+
+                <!-- Approved tools -->
+                <div class="card" style="margin-top:16px">
+                    <div class="card-header">
+                        <div class="card-title">已授权工具明细</div>
+                    </div>
+                    <div class="card-body" style="padding:0">
+                        <table class="approved-tools">
+                            <thead>
+                                <tr>
+                                    <th>MCP 服务</th>
+                                    <th>工具名</th>
+                                    <th>安全等级</th>
+                                    <th>操作类型</th>
+                                    <th>授权时间</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>飞书日历（团队）</td>
+                                    <td class="tool-name-cell">list_user_events</td>
+                                    <td><span class="tag tag-filtered">③ 过滤</span></td>
+                                    <td><span class="tag tag-read">读</span></td>
+                                    <td style="color:var(--gray-400)">2026-03-20</td>
+                                </tr>
+                                <tr>
+                                    <td>飞书日历（团队）</td>
+                                    <td class="tool-name-cell">get_user_freebusy</td>
+                                    <td><span class="tag tag-filtered">③ 过滤</span></td>
+                                    <td><span class="tag tag-read">读</span></td>
+                                    <td style="color:var(--gray-400)">2026-03-20</td>
+                                </tr>
+                                <tr>
+                                    <td>飞书日历（团队）</td>
+                                    <td class="tool-name-cell">list_all_schedules</td>
+                                    <td><span class="tag tag-filtered">③ 过滤</span></td>
+                                    <td><span class="tag tag-read">读</span></td>
+                                    <td style="color:var(--gray-400)">2026-03-20</td>
+                                </tr>
+                                <tr>
+                                    <td>飞书通讯录（团队）</td>
+                                    <td class="tool-name-cell">search_employee</td>
+                                    <td><span class="tag tag-filtered">③ 过滤</span></td>
+                                    <td><span class="tag tag-read">读</span></td>
+                                    <td style="color:var(--gray-400)">2026-03-20</td>
+                                </tr>
+                                <tr>
+                                    <td>飞书通讯录（团队）</td>
+                                    <td class="tool-name-cell">get_user_info</td>
+                                    <td><span class="tag tag-filtered">③ 过滤</span></td>
+                                    <td><span class="tag tag-read">读</span></td>
+                                    <td style="color:var(--gray-400)">2026-03-20</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: 可用市场 (placeholder) -->
+            <div id="tab-available" style="display:none">
+                <div class="alert alert-info">
+                    <span class="alert-icon">ℹ️</span>
+                    <div>以下 TAT 服务需申请 KEY 后使用。UAT 服务已默认启用，不在此列表中。</div>
+                </div>
+                <div class="card">
+                    <div class="card-body">
+                        <div class="service-item" onclick="openModal()">
+                            <div class="service-icon tat">💬</div>
+                            <div class="service-info">
+                                <div class="service-name">飞书 IM（消息）</div>
+                                <div class="service-desc">发送消息、创建群组、@提醒等，需强审计</div>
+                            </div>
+                            <div class="service-meta">
+                                <span class="badge badge-purple">TAT</span>
+                                <span class="badge" style="background:#FEF3F2;color:#B42318;border:1px solid #FECDCA">④
+                                    受限</span>
+                                <span class="tools-count">3 工具</span>
+                                <button class="btn btn-sm btn-primary"
+                                    onclick="event.stopPropagation();openModal()">申请</button>
+                            </div>
+                        </div>
+                        <div class="service-item" onclick="openModal()">
+                            <div class="service-icon tat">📄</div>
+                            <div class="service-info">
+                                <div class="service-name">飞书文档（团队）</div>
+                                <div class="service-desc">读取共享文档和知识库内容</div>
+                            </div>
+                            <div class="service-meta">
+                                <span class="badge badge-purple">TAT</span>
+                                <span class="badge badge-yellow">③ 过滤</span>
+                                <span class="tools-count">2 工具</span>
+                                <button class="btn btn-sm btn-primary"
+                                    onclick="event.stopPropagation();openModal()">申请</button>
+                            </div>
+                        </div>
+                        <div class="service-item">
+                            <div class="service-icon tat">🎥</div>
+                            <div class="service-info">
+                                <div class="service-name">飞书会议（团队）</div>
+                                <div class="service-desc">查询会议列表和会议纪要</div>
+                            </div>
+                            <div class="service-meta">
+                                <span class="badge badge-purple">TAT</span>
+                                <span class="badge badge-yellow">③ 过滤</span>
+                                <span class="tools-count">2 工具</span>
+                                <button class="btn btn-sm btn-primary"
+                                    onclick="event.stopPropagation();openModal()">申请</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Apply Modal -->
+    <div class="modal-overlay" id="applyModal">
+        <div class="modal">
+            <div class="modal-header">
+                <div class="modal-title">申请 MCP 能力</div>
+                <button class="modal-close" onclick="closeModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label class="form-label">当前空间</label>
+                    <input class="form-input disabled" value="产品部工作空间 (space_pm_001)" disabled>
+                    <div class="form-hint">KEY 将绑定到此空间，不可跨空间使用</div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">选择 MCP 服务与工具</label>
+                    <div class="form-hint" style="margin-bottom:8px">勾选需要的服务和工具，支持跨服务同时申请</div>
+
+                    <div class="cascade-group">
+                        <!-- Service 1 -->
+                        <div class="cascade-header expanded" onclick="toggleCascade(this)">
+                            <div class="cascade-left">
+                                <div class="cascade-check checked"
+                                    onclick="event.stopPropagation();toggleServiceCheck(this)"></div>
+                                <span class="cascade-name">飞书 IM（消息）</span>
+                                <span class="badge badge-purple" style="font-size:10px">TAT</span>
+                                <span class="badge"
+                                    style="background:#FEF3F2;color:#B42318;border:1px solid #FECDCA;font-size:10px">④
+                                    受限</span>
+                            </div>
+                            <span class="cascade-arrow expanded">▼</span>
+                        </div>
+                        <div class="cascade-tools show">
+                            <div class="tool-row">
+                                <div class="cascade-check checked" onclick="toggleCheck(this)"></div>
+                                <div class="tool-info">
+                                    <div class="tool-name">send_message</div>
+                                    <div class="tool-desc">向指定群或个人发送文本/富文本/卡片消息</div>
+                                </div>
+                                <div class="tool-tags">
+                                    <span class="tag tag-restricted">④ 受限</span>
+                                    <span class="tag tag-write">写</span>
+                                </div>
+                            </div>
+                            <div class="tool-row">
+                                <div class="cascade-check checked" onclick="toggleCheck(this)"></div>
+                                <div class="tool-info">
+                                    <div class="tool-name">create_group</div>
+                                    <div class="tool-desc">创建飞书群组并添加指定成员</div>
+                                </div>
+                                <div class="tool-tags">
+                                    <span class="tag tag-restricted">④ 受限</span>
+                                    <span class="tag tag-write">写</span>
+                                </div>
+                            </div>
+                            <div class="tool-row">
+                                <div class="cascade-check checked" onclick="toggleCheck(this)"></div>
+                                <div class="tool-info">
+                                    <div class="tool-name">send_card</div>
+                                    <div class="tool-desc">发送飞书交互卡片消息</div>
+                                </div>
+                                <div class="tool-tags">
+                                    <span class="tag tag-restricted">④ 受限</span>
+                                    <span class="tag tag-write">写</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Service 2 -->
+                        <div class="cascade-header" onclick="toggleCascade(this)">
+                            <div class="cascade-left">
+                                <div class="cascade-check" onclick="event.stopPropagation();toggleServiceCheck(this)">
+                                </div>
+                                <span class="cascade-name">飞书文档（团队）</span>
+                                <span class="badge badge-purple" style="font-size:10px">TAT</span>
+                                <span class="badge badge-yellow" style="font-size:10px">③ 过滤</span>
+                            </div>
+                            <span class="cascade-arrow">▼</span>
+                        </div>
+                        <div class="cascade-tools">
+                            <div class="tool-row">
+                                <div class="cascade-check" onclick="toggleCheck(this)"></div>
+                                <div class="tool-info">
+                                    <div class="tool-name">read_doc_content</div>
+                                    <div class="tool-desc">读取指定文档的内容</div>
+                                </div>
+                                <div class="tool-tags">
+                                    <span class="tag tag-filtered">③ 过滤</span>
+                                    <span class="tag tag-read">读</span>
+                                </div>
+                            </div>
+                            <div class="tool-row">
+                                <div class="cascade-check" onclick="toggleCheck(this)"></div>
+                                <div class="tool-info">
+                                    <div class="tool-name">query_bitable</div>
+                                    <div class="tool-desc">查询多维表格数据</div>
+                                </div>
+                                <div class="tool-tags">
+                                    <span class="tag tag-filtered">③ 过滤</span>
+                                    <span class="tag tag-read">读</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Service 3 -->
+                        <div class="cascade-header" onclick="toggleCascade(this)">
+                            <div class="cascade-left">
+                                <div class="cascade-check" onclick="event.stopPropagation();toggleServiceCheck(this)">
+                                </div>
+                                <span class="cascade-name">飞书会议（团队）</span>
+                                <span class="badge badge-purple" style="font-size:10px">TAT</span>
+                                <span class="badge badge-yellow" style="font-size:10px">③ 过滤</span>
+                            </div>
+                            <span class="cascade-arrow">▼</span>
+                        </div>
+                        <div class="cascade-tools">
+                            <div class="tool-row">
+                                <div class="cascade-check" onclick="toggleCheck(this)"></div>
+                                <div class="tool-info">
+                                    <div class="tool-name">list_meetings</div>
+                                    <div class="tool-desc">查询会议列表</div>
+                                </div>
+                                <div class="tool-tags">
+                                    <span class="tag tag-filtered">③ 过滤</span>
+                                    <span class="tag tag-read">读</span>
+                                </div>
+                            </div>
+                            <div class="tool-row">
+                                <div class="cascade-check" onclick="toggleCheck(this)"></div>
+                                <div class="tool-info">
+                                    <div class="tool-name">get_meeting_notes</div>
+                                    <div class="tool-desc">读取会议纪要内容</div>
+                                </div>
+                                <div class="tool-tags">
+                                    <span class="tag tag-filtered">③ 过滤</span>
+                                    <span class="tag tag-read">读</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">申请理由</label>
+                    <textarea class="form-input" placeholder="请描述申请该能力的业务场景和用途"></textarea>
+                </div>
+
+                <div class="alert alert-warning">
+                    <span class="alert-icon">⚠️</span>
+                    <div>
+                        <strong>包含④层受限工具</strong>，需多级审批（平台管理员 + 安全负责人）。<br>
+                        审批结果将通过飞书 MCP 管家通知您。
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal()">取消</button>
+                <button class="btn btn-primary" onclick="submitApply()">提交申请</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function switchTab(el, tab) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            el.classList.add('active');
+            document.getElementById('tab-enabled').style.display = tab === 'enabled' ? 'block' : 'none';
+            document.getElementById('tab-available').style.display = tab === 'available' ? 'block' : 'none';
+            document.getElementById('tab-keys').style.display = tab === 'keys' ? 'block' : 'none';
+        }
+        function toggleCascade(el) {
+            el.classList.toggle('expanded');
+            el.querySelector('.cascade-arrow').classList.toggle('expanded');
+            const tools = el.nextElementSibling;
+            tools.classList.toggle('show');
+        }
+        function toggleCheck(el) {
+            el.classList.toggle('checked');
+        }
+        function toggleServiceCheck(el) {
+            const isChecked = el.classList.toggle('checked');
+            const header = el.closest('.cascade-header');
+            const tools = header.nextElementSibling;
+            tools.querySelectorAll('.cascade-check').forEach(c => {
+                if (isChecked) c.classList.add('checked');
+                else c.classList.remove('checked');
+            });
+            if (isChecked && !tools.classList.contains('show')) {
+                header.classList.add('expanded');
+                header.querySelector('.cascade-arrow').classList.add('expanded');
+                tools.classList.add('show');
+            }
+        }
+        function openModal() { document.getElementById('applyModal').classList.add('show'); }
+        function closeModal() { document.getElementById('applyModal').classList.remove('show'); }
+        function submitApply() {
+            closeModal();
+            // Switch to keys tab and show success
+            switchTab(document.querySelectorAll('.tab')[2], 'keys');
+            alert('✅ 申请已提交！审批编号 #AP20260324003\n审批结果将通过飞书 MCP 管家通知您。');
+        }
+        document.getElementById('applyModal').addEventListener('click', function (e) {
+            if (e.target === this) closeModal();
+        });
+    </script>
+</body>
+
+</html>

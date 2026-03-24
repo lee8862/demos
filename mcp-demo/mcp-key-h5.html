@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>申请 MCP 能力</title>
+    <style>
+        :root {
+            --primary: #3370ff;
+            --primary-light: #e8f0fe;
+            --success: #34c724;
+            --warning: #ff9800;
+            --danger: #f54a45;
+            --bg: #f5f6f7;
+            --card: #ffffff;
+            --border: #e8e8e8;
+            --text: #1f2329;
+            --text2: #646a73;
+            --text3: #8f959e;
+            --radius: 12px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, 'PingFang SC', 'Helvetica Neue', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding-bottom: 100px;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #3370ff 0%, #245bdb 100%);
+            color: #fff;
+            padding: 20px 16px 24px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .header p {
+            font-size: 13px;
+            opacity: 0.8;
+        }
+
+        .steps {
+            display: flex;
+            padding: 16px;
+            gap: 4px;
+            background: var(--card);
+            border-bottom: 1px solid var(--border);
+        }
+
+        .step {
+            flex: 1;
+            text-align: center;
+        }
+
+        .step-dot {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--border);
+            color: var(--text3);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            margin-bottom: 4px;
+            transition: all 0.3s;
+        }
+
+        .step.active .step-dot {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .step.done .step-dot {
+            background: var(--success);
+            color: #fff;
+        }
+
+        .step-label {
+            font-size: 11px;
+            color: var(--text3);
+        }
+
+        .step.active .step-label {
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .step.done .step-label {
+            color: var(--success);
+        }
+
+        .section {
+            padding: 16px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .space-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 16px;
+            background: var(--card);
+            border: 2px solid var(--border);
+            border-radius: var(--radius);
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .space-item:active {
+            transform: scale(0.98);
+        }
+
+        .space-item.selected {
+            border-color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .space-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #3370ff, #5b8def);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .space-info {
+            flex: 1;
+        }
+
+        .space-name {
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        .space-id {
+            font-size: 12px;
+            color: var(--text3);
+            margin-top: 2px;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .space-check {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .space-item.selected .space-check {
+            border-color: var(--primary);
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .service-group {
+            background: var(--card);
+            border-radius: var(--radius);
+            margin-bottom: 12px;
+            overflow: hidden;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+
+        .service-header {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 16px;
+            cursor: pointer;
+        }
+
+        .service-checkbox {
+            width: 20px;
+            height: 20px;
+            border-radius: 4px;
+            border: 2px solid var(--border);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            font-size: 12px;
+        }
+
+        .service-checkbox.checked,
+        .service-checkbox.partial {
+            border-color: var(--primary);
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .service-info {
+            flex: 1;
+        }
+
+        .service-name {
+            font-size: 15px;
+            font-weight: 500;
+        }
+
+        .service-desc {
+            font-size: 12px;
+            color: var(--text3);
+            margin-top: 2px;
+        }
+
+        .service-badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 500;
+            background: #f0e6ff;
+            color: #7c3aed;
+        }
+
+        .service-arrow {
+            color: var(--text3);
+            transition: transform 0.3s;
+            font-size: 12px;
+        }
+
+        .service-arrow.open {
+            transform: rotate(90deg);
+        }
+
+        .tool-list {
+            border-top: 1px solid var(--border);
+        }
+
+        .tool-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px 16px 12px 46px;
+            border-bottom: 1px solid #f5f5f5;
+            cursor: pointer;
+        }
+
+        .tool-item:last-child {
+            border-bottom: none;
+        }
+
+        .tool-checkbox {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            border: 2px solid var(--border);
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            font-size: 10px;
+            margin-top: 2px;
+        }
+
+        .tool-checkbox.checked {
+            border-color: var(--primary);
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .tool-info {
+            flex: 1;
+        }
+
+        .tool-name {
+            font-size: 14px;
+            font-weight: 500;
+            font-family: 'SF Mono', monospace;
+        }
+
+        .tool-desc {
+            font-size: 12px;
+            color: var(--text2);
+            margin-top: 2px;
+        }
+
+        .tool-tags {
+            display: flex;
+            gap: 4px;
+            margin-top: 6px;
+            flex-wrap: wrap;
+        }
+
+        .tool-tag {
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-weight: 500;
+        }
+
+        .tag-filtered {
+            background: #fff7e6;
+            color: #d48806;
+        }
+
+        .tag-read {
+            background: #f0f5ff;
+            color: #2f54eb;
+        }
+
+        .tag-write {
+            background: #fff1f0;
+            color: #f5222d;
+        }
+
+        .info-banner {
+            display: flex;
+            gap: 8px;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.5;
+            margin-bottom: 12px;
+        }
+
+        .info-banner.info {
+            background: #e8f0fe;
+            color: #245bdb;
+        }
+
+        .info-banner.warning {
+            background: #fff7e6;
+            color: #ad6800;
+        }
+
+        .reason-textarea {
+            width: 100%;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 14px;
+            resize: none;
+            outline: none;
+            font-family: inherit;
+            min-height: 80px;
+        }
+
+        .reason-textarea:focus {
+            border-color: var(--primary);
+        }
+
+        .char-count {
+            text-align: right;
+            font-size: 11px;
+            color: var(--text3);
+            margin-top: 4px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f5f5f5;
+        }
+
+        .summary-row:last-child {
+            border-bottom: none;
+        }
+
+        .summary-label {
+            font-size: 13px;
+            color: var(--text2);
+        }
+
+        .summary-value {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .card {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+        }
+
+        .bottom-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--card);
+            padding: 12px 16px;
+            padding-bottom: max(12px, env(safe-area-inset-bottom));
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+            z-index: 100;
+            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .btn {
+            flex: 1;
+            height: 44px;
+            border-radius: 8px;
+            border: none;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .btn:active {
+            transform: scale(0.97);
+        }
+
+        .btn-default {
+            background: #f5f6f7;
+            color: var(--text);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: #fff;
+        }
+
+        .btn-primary:disabled {
+            background: #c0cfe8;
+            cursor: not-allowed;
+        }
+
+        .result-page {
+            text-align: center;
+            padding: 60px 24px;
+        }
+
+        .result-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        .result-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .result-desc {
+            font-size: 14px;
+            color: var(--text2);
+            line-height: 1.6;
+        }
+
+        .result-detail {
+            background: #f5f6f7;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 24px;
+            text-align: left;
+        }
+
+        .result-note {
+            margin-top: 12px;
+            font-size: 12px;
+            color: var(--text3);
+            line-height: 1.5;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>📋 申请 MCP 能力</h1>
+        <p id="headerSub">选择空间和需要的服务，提交申请后将自动审批</p>
+    </div>
+
+    <div class="steps" id="steps">
+        <div class="step active" data-step="1">
+            <div class="step-dot">1</div>
+            <div class="step-label">选择空间</div>
+        </div>
+        <div class="step" data-step="2">
+            <div class="step-dot">2</div>
+            <div class="step-label">选择能力</div>
+        </div>
+        <div class="step" data-step="3">
+            <div class="step-dot">3</div>
+            <div class="step-label">确认提交</div>
+        </div>
+    </div>
+
+    <div id="step1" class="section fade-in">
+        <div class="section-title"><span>🏢</span> 选择 Dify 空间</div>
+        <div class="info-banner info"><span>ℹ️</span><span>已根据你的飞书账号自动关联以下空间。</span></div>
+        <div id="spaceList"></div>
+    </div>
+
+    <div id="step2" class="section hidden fade-in">
+        <div class="section-title"><span>🔧</span> 选择 MCP 服务与工具</div>
+        <div class="info-banner info"><span>💡</span><span>展开服务可查看和勾选具体工具。数据过滤规则将由审批人在审批时配置。</span></div>
+        <div id="serviceList"></div>
+    </div>
+
+    <div id="step3" class="section hidden fade-in">
+        <div class="section-title"><span>📝</span> 确认申请信息</div>
+        <div class="card" id="summaryCard"></div>
+        <div class="section-title" style="margin-top:16px"><span>💬</span> 申请理由</div>
+        <textarea class="reason-textarea" id="reason" placeholder="请简要说明申请该能力的使用场景和目的…" maxlength="200"></textarea>
+        <div class="char-count"><span id="charCount">0</span>/200</div>
+        <div id="levelBanner" class="info-banner warning" style="margin-top:12px"><span>⚠️</span><span
+                id="levelText"></span></div>
+    </div>
+
+    <div id="resultPage" class="section hidden fade-in">
+        <div class="result-page">
+            <div class="result-icon">✅</div>
+            <div class="result-title">申请已提交</div>
+            <div class="result-desc">审批结果将通过 MCP 管家私聊通知你<br>通过后能力将自动在空间中生效</div>
+            <div class="result-detail" id="resultDetail"></div>
+            <div class="result-note">💡 审批人将根据你申请的工具配置数据过滤规则，确保数据安全。</div>
+        </div>
+    </div>
+
+    <div class="bottom-bar" id="bottomBar">
+        <button class="btn btn-default hidden" id="prevBtn" onclick="prevStep()">上一步</button>
+        <button class="btn btn-primary" id="nextBtn" onclick="nextStep()" disabled>下一步</button>
+    </div>
+
+    <script>
+        const spaces = [
+            { id: 'space_pm_001', name: '产品部工作空间', creator: '张三' },
+            { id: 'space_dev_002', name: '研发部工作空间', creator: '张三' },
+            { id: 'space_test_003', name: '测试环境', creator: '张三' }
+        ];
+
+        const services = [
+            {
+                id: 'feishu-contact-shared', name: '飞书通讯录（团队）', desc: '搜索员工信息、查询部门结构',
+                tools: [
+                    { name: 'search_employee', desc: '按姓名或工号搜索员工基本信息', level: 'filtered', op: 'read' },
+                    { name: 'get_department', desc: '查询部门结构和成员列表', level: 'filtered', op: 'read' },
+                    { name: 'get_user_info', desc: '查询指定员工的详细信息', level: 'filtered', op: 'read' }
+                ]
+            },
+            {
+                id: 'feishu-calendar-shared', name: '飞书日历（团队）', desc: '查询团队成员排期和忙闲状态',
+                tools: [
+                    { name: 'list_user_events', desc: '查询指定同事在某时间段内的日程安排', level: 'filtered', op: 'read' },
+                    { name: 'get_user_freebusy', desc: '查询指定同事的忙闲状态', level: 'filtered', op: 'read' },
+                    { name: 'list_all_schedules', desc: '查询部门全员排期概览', level: 'filtered', op: 'read' }
+                ]
+            },
+            {
+                id: 'feishu-docs-shared', name: '飞书文档（团队）', desc: '读取共享文档和多维表格数据',
+                tools: [
+                    { name: 'read_doc_content', desc: '读取指定文档的内容', level: 'filtered', op: 'read' },
+                    { name: 'query_bitable', desc: '查询多维表格数据', level: 'filtered', op: 'read' }
+                ]
+            },
+            {
+                id: 'feishu-im-shared', name: '飞书 IM（消息）', desc: '发送消息、创建群组、发送卡片',
+                tools: [
+                    { name: 'send_message', desc: '向指定群或个人发送文本消息', level: 'filtered', op: 'write' },
+                    { name: 'send_card', desc: '发送飞书交互卡片消息', level: 'filtered', op: 'write' },
+                    { name: 'create_group', desc: '创建飞书群组并添加指定成员', level: 'filtered', op: 'write' }
+                ]
+            },
+            {
+                id: 'tapd-project', name: 'TAPD 项目管理', desc: '查询项目 Feature、管线、迭代信息',
+                tools: [
+                    { name: 'list_features', desc: '查询项目的 Feature 列表和分工', level: 'filtered', op: 'read' },
+                    { name: 'get_pipeline', desc: '查询管线规划和关键里程碑', level: 'filtered', op: 'read' },
+                    { name: 'get_iterations', desc: '查询迭代详情和历史数据', level: 'filtered', op: 'read' }
+                ]
+            }
+        ];
+
+        let currentStep = 1, selectedSpace = null, selectedTools = {}, expandedServices = new Set();
+
+        function renderSpaces() {
+            document.getElementById('spaceList').innerHTML = spaces.map(s => `
+      <div class="space-item ${selectedSpace === s.id ? 'selected' : ''}" onclick="selectSpace('${s.id}')">
+        <div class="space-icon">${s.name[0]}</div>
+        <div class="space-info"><div class="space-name">${s.name}</div><div class="space-id">${s.id}</div></div>
+        <div class="space-check">${selectedSpace === s.id ? '✓' : ''}</div>
+      </div>
+    `).join('');
+        }
+
+        function selectSpace(id) { selectedSpace = id; renderSpaces(); updateButtons(); }
+
+        function renderServices() {
+            document.getElementById('serviceList').innerHTML = services.map(s => {
+                const selected = selectedTools[s.id] || new Set();
+                const allChecked = selected.size === s.tools.length;
+                const someChecked = selected.size > 0 && !allChecked;
+                const isExpanded = expandedServices.has(s.id);
+                return `
+        <div class="service-group">
+          <div class="service-header" onclick="toggleService('${s.id}')">
+            <div class="service-checkbox ${allChecked ? 'checked' : someChecked ? 'partial' : ''}" onclick="event.stopPropagation(); toggleAllTools('${s.id}')">
+              ${allChecked ? '✓' : someChecked ? '−' : ''}
+            </div>
+            <div class="service-info">
+              <div class="service-name">${s.name}</div>
+              <div class="service-desc">${s.desc}${selected.size > 0 ? ' · 已选 ' + selected.size + '/' + s.tools.length : ''}</div>
+            </div>
+            <span class="service-badge">TAT</span>
+            <span class="service-arrow ${isExpanded ? 'open' : ''}">▶</span>
+          </div>
+          <div class="tool-list ${isExpanded ? '' : 'hidden'}">
+            ${s.tools.map(t => `
+              <div class="tool-item" onclick="toggleTool('${s.id}', '${t.name}')">
+                <div class="tool-checkbox ${selected.has(t.name) ? 'checked' : ''}">${selected.has(t.name) ? '✓' : ''}</div>
+                <div class="tool-info">
+                  <div class="tool-name">${t.name}</div>
+                  <div class="tool-desc">${t.desc}</div>
+                  <div class="tool-tags">
+                    <span class="tool-tag tag-filtered">③ 过滤</span>
+                    <span class="tool-tag ${t.op === 'write' ? 'tag-write' : 'tag-read'}">${t.op === 'write' ? '写操作' : '读操作'}</span>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>`;
+            }).join('');
+        }
+
+        function toggleService(id) { expandedServices.has(id) ? expandedServices.delete(id) : expandedServices.add(id); renderServices(); }
+        function toggleAllTools(svcId) {
+            const svc = services.find(s => s.id === svcId);
+            const sel = selectedTools[svcId] || new Set();
+            if (sel.size === svc.tools.length) delete selectedTools[svcId];
+            else selectedTools[svcId] = new Set(svc.tools.map(t => t.name));
+            if (!expandedServices.has(svcId)) expandedServices.add(svcId);
+            renderServices(); updateButtons();
+        }
+        function toggleTool(svcId, toolName) {
+            if (!selectedTools[svcId]) selectedTools[svcId] = new Set();
+            selectedTools[svcId].has(toolName) ? selectedTools[svcId].delete(toolName) : selectedTools[svcId].add(toolName);
+            if (selectedTools[svcId].size === 0) delete selectedTools[svcId];
+            renderServices(); updateButtons();
+        }
+        function getTotalTools() { return Object.values(selectedTools).reduce((n, s) => n + s.size, 0); }
+
+        function renderSummary() {
+            const space = spaces.find(s => s.id === selectedSpace);
+            let toolsHtml = '';
+            for (const [svcId, tools] of Object.entries(selectedTools)) {
+                const svc = services.find(s => s.id === svcId);
+                toolsHtml += `<div class="summary-row"><span class="summary-label">${svc.name}</span><span class="summary-value">${tools.size} 个工具</span></div>`;
+            }
+            document.getElementById('summaryCard').innerHTML = `
+      <div class="summary-row"><span class="summary-label">目标空间</span><span class="summary-value">${space?.name || ''}</span></div>
+      <div class="summary-row"><span class="summary-label">申请人</span><span class="summary-value">张三（当前登录）</span></div>
+      <div class="summary-row"><span class="summary-label">服务数</span><span class="summary-value">${Object.keys(selectedTools).length} 个服务 · ${getTotalTools()} 个工具</span></div>
+      ${toolsHtml}
+      <div class="summary-row"><span class="summary-label">综合安全等级</span><span class="summary-value"><span class="tool-tag tag-filtered">③ 过滤 · 标准审批</span></span></div>`;
+            document.getElementById('levelText').textContent = '标准审批，提交后由平台管理员审核并配置数据过滤规则';
+        }
+
+        function renderResult() {
+            const space = spaces.find(s => s.id === selectedSpace);
+            let html = `<div style="font-size:13px">
+      <div style="margin-bottom:8px"><strong>空间：</strong>${space.name}</div>
+      <div style="margin-bottom:8px"><strong>审批链：</strong>标准审批</div>
+      <div style="margin-bottom:4px"><strong>已申请能力：</strong></div>`;
+            for (const [svcId, tools] of Object.entries(selectedTools)) {
+                const svc = services.find(s => s.id === svcId);
+                html += `<div style="margin-bottom:6px"><strong>${svc.name}</strong><br>`;
+                for (const t of tools) html += `<span style="font-family:monospace;font-size:12px;color:#646a73">  ${t}</span><br>`;
+                html += '</div>';
+            }
+            html += '</div>';
+            document.getElementById('resultDetail').innerHTML = html;
+        }
+
+        function updateButtons() {
+            const next = document.getElementById('nextBtn'), prev = document.getElementById('prevBtn');
+            if (currentStep === 1) { prev.classList.add('hidden'); next.textContent = '下一步'; next.disabled = !selectedSpace; }
+            else if (currentStep === 2) { prev.classList.remove('hidden'); next.textContent = '下一步'; next.disabled = getTotalTools() === 0; }
+            else if (currentStep === 3) { prev.classList.remove('hidden'); next.textContent = '提交申请'; next.disabled = false; }
+        }
+        function updateSteps() {
+            document.querySelectorAll('.step').forEach(el => {
+                const s = parseInt(el.dataset.step);
+                el.className = 'step' + (s === currentStep ? ' active' : s < currentStep ? ' done' : '');
+            });
+        }
+        function nextStep() {
+            if (currentStep === 1 && selectedSpace) {
+                currentStep = 2; document.getElementById('step1').classList.add('hidden'); document.getElementById('step2').classList.remove('hidden'); renderServices();
+            } else if (currentStep === 2 && getTotalTools() > 0) {
+                currentStep = 3; document.getElementById('step2').classList.add('hidden'); document.getElementById('step3').classList.remove('hidden'); renderSummary();
+            } else if (currentStep === 3) {
+                document.getElementById('step3').classList.add('hidden'); document.getElementById('bottomBar').classList.add('hidden');
+                document.getElementById('steps').classList.add('hidden'); document.getElementById('resultPage').classList.remove('hidden');
+                document.getElementById('headerSub').textContent = '申请已提交，等待审批'; renderResult(); return;
+            }
+            updateSteps(); updateButtons();
+        }
+        function prevStep() {
+            if (currentStep === 2) { currentStep = 1; document.getElementById('step2').classList.add('hidden'); document.getElementById('step1').classList.remove('hidden'); }
+            else if (currentStep === 3) { currentStep = 2; document.getElementById('step3').classList.add('hidden'); document.getElementById('step2').classList.remove('hidden'); }
+            updateSteps(); updateButtons();
+        }
+        document.getElementById('reason').addEventListener('input', function () { document.getElementById('charCount').textContent = this.value.length; });
+        renderSpaces(); updateButtons();
+    </script>
+</body>
+
+</html>

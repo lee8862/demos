@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCP 中台管理后台</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/antd@5.12.8/dist/reset.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1.11.10/dayjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/antd@5.12.8/dist/antd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@ant-design/icons@5.2.6/dist/index.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.23.6/babel.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f2f5; }
+    .logo { height: 32px; display: flex; align-items: center; gap: 10px; padding: 0 16px; color: #fff; font-size: 16px; font-weight: 600; }
+    .logo-icon { width: 32px; height: 32px; background: linear-gradient(135deg, #1677ff, #722ed1); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 14px; font-weight: 700; }
+    .stat-card { background: #fff; border-radius: 8px; padding: 20px; }
+    .stat-card .label { color: #8c8c8c; font-size: 14px; margin-bottom: 8px; }
+    .stat-card .value { font-size: 28px; font-weight: 600; color: #262626; }
+    .tool-card { border: 1px solid #f0f0f0; border-radius: 8px; padding: 16px; margin-bottom: 12px; background: #fafafa; transition: all 0.2s; }
+    .tool-card:hover { border-color: #1677ff; box-shadow: 0 2px 8px rgba(22,119,255,0.1); }
+    .tool-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+    .tool-name { font-weight: 600; font-size: 15px; color: #262626; font-family: 'SF Mono', Monaco, monospace; }
+    .tool-desc { color: #595959; font-size: 13px; line-height: 1.6; margin-bottom: 12px; }
+    .tool-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+    .schema-preview { background: #1e1e1e; border-radius: 8px; padding: 16px; color: #d4d4d4; font-family: 'SF Mono', Monaco, monospace; font-size: 12px; line-height: 1.6; overflow-x: auto; white-space: pre; max-height: 300px; overflow-y: auto; }
+    .filter-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: #f6ffed; border: 1px solid #b7eb8f; border-radius: 6px; margin-bottom: 8px; }
+    .page-header { background: #fff; padding: 24px 24px 0; margin: -24px -24px 24px; border-bottom: 1px solid #f0f0f0; }
+    .page-title { font-size: 20px; font-weight: 600; color: #262626; margin-bottom: 4px; }
+    .page-subtitle { font-size: 14px; color: #8c8c8c; margin-bottom: 16px; }
+    .import-preview { border: 2px dashed #d9d9d9; border-radius: 12px; padding: 40px; text-align: center; transition: all 0.3s; cursor: pointer; }
+    .import-preview:hover { border-color: #1677ff; background: #f0f5ff; }
+    .empty-tools { text-align: center; padding: 40px; color: #8c8c8c; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; }
+    .status-dot.active { background: #52c41a; }
+    .status-dot.draft { background: #faad14; }
+    .status-dot.deprecated { background: #ff4d4f; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { Layout, Menu, Table, Tag, Button, Space, Modal, Form, Input, Select, Tabs, Card, Row, Col, Badge, Tooltip, Drawer, Collapse, Divider, Upload, Alert, Switch, message, Popconfirm, Steps, InputNumber, Typography, Empty, Dropdown, Breadcrumb, Statistic } = antd;
+    const { Header, Sider, Content } = Layout;
+    const { TextArea } = Input;
+    const { Option } = Select;
+    const { Panel } = Collapse;
+    const { Title, Text, Paragraph } = Typography;
+    const { Dragger } = Upload;
+    const icons = window.icons;
+
+    // --- Mock Data ---
+    const mockServices = [
+      {
+        mcp_id: 'feishu-calendar-shared',
+        name: '飞书日历（团队）',
+        description: '查询团队成员排期和忙闲状态，支持按部门范围过滤',
+        category: 'tat',
+        version: '1.2.0',
+        maintainer: 'platform-team',
+        endpoint: 'https://mcp.internal/feishu-calendar-shared',
+        status: 'active',
+        tools_count: 3,
+        key_refs: 5,
+        created_at: '2026-02-15',
+        updated_at: '2026-03-20',
+        tools: [
+          { name: 'list_user_events', description: '查询指定同事在某时间段内的日程安排', security_level: 'filtered', operation: 'read', audit_level: 'standard', feishu_api: 'calendar.v4.events.list' },
+          { name: 'get_user_freebusy', description: '查询指定同事的忙闲状态', security_level: 'filtered', operation: 'read', audit_level: 'standard', feishu_api: 'calendar.v4.freebusy.list' },
+          { name: 'list_all_schedules', description: '查询部门全员排期概览', security_level: 'filtered', operation: 'read', audit_level: 'standard', feishu_api: 'calendar.v4.events.search' }
+        ]
+      },
+      {
+        mcp_id: 'feishu-contact-shared',
+        name: '飞书通讯录（团队）',
+        description: '搜索员工信息、查询部门结构，按调用者部门范围过滤',
+        category: 'tat',
+        version: '1.0.0',
+        maintainer: 'platform-team',
+        endpoint: 'https://mcp.internal/feishu-contact-shared',
+        status: 'active',
+        tools_count: 3,
+        key_refs: 8,
+        created_at: '2026-02-10',
+        updated_at: '2026-03-18',
+        tools: [
+          { name: 'search_employee', description: '按姓名或工号搜索员工基本信息', security_level: 'filtered', operation: 'read', audit_level: 'standard', feishu_api: 'contact.v3.user.list' },
+          { name: 'get_department', description: '查询部门结构和成员列表', security_level: 'filtered', operation: 'read', audit_level: 'standard', feishu_api: 'contact.v3.department.get' },
+          { name: 'get_user_info', description: '查询指定员工的详细信息', security_level: 'filtered', operation: 'read', audit_level: 'standard', feishu_api: 'contact.v3.user.get' }
+        ]
+      },
+      {
+        mcp_id: 'feishu-im-shared',
+        name: '飞书 IM（消息）',
+        description: '发送消息、创建群组、@提醒等写操作，需强审计',
+        category: 'tat',
+        version: '1.1.0',
+        maintainer: 'platform-team',
+        endpoint: 'https://mcp.internal/feishu-im-shared',
+        status: 'active',
+        tools_count: 3,
+        key_refs: 3,
+        created_at: '2026-03-01',
+        updated_at: '2026-03-22',
+        tools: [
+          { name: 'send_message', description: '向指定群或个人发送文本/富文本/卡片消息', security_level: 'restricted', operation: 'write', audit_level: 'enhanced', feishu_api: 'im.v1.message.create' },
+          { name: 'create_group', description: '创建飞书群组并添加指定成员', security_level: 'restricted', operation: 'write', audit_level: 'enhanced', feishu_api: 'im.v1.chat.create' },
+          { name: 'send_card', description: '发送飞书交互卡片消息', security_level: 'restricted', operation: 'write', audit_level: 'enhanced', feishu_api: 'im.v1.message.create' }
+        ]
+      },
+      {
+        mcp_id: 'feishu-calendar-personal',
+        name: '飞书日历（个人）',
+        description: '查询和管理个人日程，使用 UAT 天然隔离',
+        category: 'uat',
+        version: '1.0.0',
+        maintainer: 'platform-team',
+        endpoint: 'https://mcp.internal/feishu-calendar-personal',
+        status: 'active',
+        tools_count: 2,
+        key_refs: 0,
+        created_at: '2026-02-15',
+        updated_at: '2026-03-10',
+        tools: [
+          { name: 'list_my_events', description: '查询我的日程安排', security_level: 'open', operation: 'read', audit_level: 'standard', feishu_api: 'calendar.v4.events.list' },
+          { name: 'get_my_freebusy', description: '查看我的忙闲状态', security_level: 'open', operation: 'read', audit_level: 'standard', feishu_api: 'calendar.v4.freebusy.list' }
+        ]
+      },
+      {
+        mcp_id: 'feishu-docs-shared',
+        name: '飞书文档（团队）',
+        description: '读取共享文档和知识库内容',
+        category: 'tat',
+        version: '0.9.0',
+        maintainer: 'platform-team',
+        endpoint: 'https://mcp.internal/feishu-docs-shared',
+        status: 'draft',
+        tools_count: 2,
+        key_refs: 0,
+        created_at: '2026-03-22',
+        updated_at: '2026-03-24',
+        tools: [
+          { name: 'read_doc_content', description: '读取指定文档的内容', security_level: 'filtered', operation: 'read', audit_level: 'standard', feishu_api: 'docx.v1.document.raw_content' },
+          { name: 'query_bitable', description: '查询多维表格数据', security_level: 'filtered', operation: 'read', audit_level: 'standard', feishu_api: 'bitable.v1.app_table_record.search' }
+        ]
+      }
+    ];
+
+    const securityColors = { open: 'green', filtered: 'orange', restricted: 'red' };
+    const securityLabels = { open: '① 开放', filtered: '③ 过滤', restricted: '④ 受限' };
+    const categoryColors = { uat: 'blue', tat: 'purple' };
+    const statusConfig = { active: { color: 'success', text: '已上架' }, draft: { color: 'warning', text: '草稿' }, deprecated: { color: 'error', text: '已下架' } };
+
+    function App() {
+      const [current, setCurrent] = React.useState('services');
+      const [services, setServices] = React.useState(mockServices);
+      const [detailVisible, setDetailVisible] = React.useState(false);
+      const [createVisible, setCreateVisible] = React.useState(false);
+      const [importVisible, setImportVisible] = React.useState(false);
+      const [selectedService, setSelectedService] = React.useState(null);
+      const [filterCategory, setFilterCategory] = React.useState('all');
+      const [filterStatus, setFilterStatus] = React.useState('all');
+      const [editToolVisible, setEditToolVisible] = React.useState(false);
+      const [form] = Form.useForm();
+      const [toolForm] = Form.useForm();
+
+      const filtered = services.filter(s => {
+        if (filterCategory !== 'all' && s.category !== filterCategory) return false;
+        if (filterStatus !== 'all' && s.status !== filterStatus) return false;
+        return true;
+      });
+
+      const stats = {
+        total: services.length,
+        active: services.filter(s => s.status === 'active').length,
+        uat: services.filter(s => s.category === 'uat').length,
+        tat: services.filter(s => s.category === 'tat').length,
+        tools: services.reduce((sum, s) => sum + s.tools_count, 0),
+      };
+
+      const columns = [
+        {
+          title: '服务', width: 280,
+          render: (_, r) => React.createElement('div', null,
+            React.createElement('div', { style: { fontWeight: 600, fontSize: 14, marginBottom: 2 } }, r.name),
+            React.createElement(Text, { type: 'secondary', style: { fontSize: 12, fontFamily: 'monospace' } }, r.mcp_id)
+          )
+        },
+        {
+          title: '类型', width: 80, dataIndex: 'category',
+          render: v => React.createElement(Tag, { color: categoryColors[v], style: { fontWeight: 500 } }, v.toUpperCase())
+        },
+        {
+          title: '状态', width: 90, dataIndex: 'status',
+          render: v => React.createElement(Tag, { color: statusConfig[v]?.color }, statusConfig[v]?.text)
+        },
+        {
+          title: '工具数', width: 80, dataIndex: 'tools_count', align: 'center',
+          render: v => React.createElement(Text, { strong: true }, v)
+        },
+        {
+          title: 'KEY 引用', width: 90, dataIndex: 'key_refs', align: 'center',
+          render: v => v > 0 ? React.createElement(Tag, { color: 'blue' }, v + ' 个空间') : React.createElement(Text, { type: 'secondary' }, '—')
+        },
+        {
+          title: '版本', width: 80, dataIndex: 'version',
+          render: v => React.createElement(Text, { code: true }, v)
+        },
+        {
+          title: '最后更新', width: 110, dataIndex: 'updated_at'
+        },
+        {
+          title: '操作', width: 200, fixed: 'right',
+          render: (_, r) => React.createElement(Space, null,
+            React.createElement(Button, { type: 'link', size: 'small', onClick: () => { setSelectedService(r); setDetailVisible(true); } }, '详情'),
+            React.createElement(Button, { type: 'link', size: 'small' }, '编辑'),
+            r.status === 'draft' ?
+              React.createElement(Popconfirm, { title: '确认上架？', onConfirm: () => { r.status = 'active'; setServices([...services]); message.success('已上架'); } },
+                React.createElement(Button, { type: 'link', size: 'small', style: { color: '#52c41a' } }, '上架')
+              ) :
+              React.createElement(Popconfirm, { title: '确认下架？下架后已有 KEY 引用不受影响', onConfirm: () => { r.status = 'deprecated'; setServices([...services]); message.warning('已下架'); } },
+                React.createElement(Button, { type: 'link', size: 'small', danger: true }, '下架')
+              )
+          )
+        }
+      ];
+
+      const renderToolCards = (tools) => {
+        if (!tools || tools.length === 0) return React.createElement(Empty, { description: '暂无工具' });
+        return tools.map((t, i) => React.createElement('div', { key: i, className: 'tool-card' },
+          React.createElement('div', { className: 'tool-header' },
+            React.createElement('span', { className: 'tool-name' }, t.name),
+            React.createElement(Space, { size: 4 },
+              React.createElement(Tag, { color: securityColors[t.security_level] }, securityLabels[t.security_level]),
+              React.createElement(Tag, { color: t.operation === 'write' ? 'red' : 'default' }, t.operation === 'write' ? '写操作' : '读操作'),
+              t.audit_level === 'enhanced' && React.createElement(Tag, { color: 'volcano' }, '强审计')
+            )
+          ),
+          React.createElement('div', { className: 'tool-desc' }, t.description),
+          React.createElement('div', { className: 'tool-meta' },
+            React.createElement(Tag, { bordered: false, color: 'default' }, 'API: ' + (t.feishu_api || '—'))
+          )
+        ));
+      };
+
+      const handleCreate = () => {
+        form.validateFields().then(values => {
+          const newService = {
+            ...values,
+            status: 'draft',
+            tools_count: 0,
+            key_refs: 0,
+            tools: [],
+            created_at: '2026-03-24',
+            updated_at: '2026-03-24'
+          };
+          setServices([newService, ...services]);
+          setCreateVisible(false);
+          form.resetFields();
+          message.success('MCP 服务创建成功（草稿）');
+        });
+      };
+
+      return React.createElement(Layout, { style: { minHeight: '100vh' } },
+        React.createElement(Sider, { width: 220, theme: 'dark', style: { boxShadow: '2px 0 8px rgba(0,0,0,0.15)' } },
+          React.createElement('div', { style: { height: 64, display: 'flex', alignItems: 'center' } },
+            React.createElement('div', { className: 'logo' },
+              React.createElement('div', { className: 'logo-icon' }, 'M'),
+              'MCP 中台'
+            )
+          ),
+          React.createElement(Menu, {
+            theme: 'dark', mode: 'inline', selectedKeys: [current],
+            onClick: e => setCurrent(e.key),
+            items: [
+              { key: 'dashboard', icon: React.createElement(icons.DashboardOutlined), label: '概览' },
+              { key: 'services', icon: React.createElement(icons.AppstoreOutlined), label: 'MCP 服务管理' },
+              { key: 'keys', icon: React.createElement(icons.KeyOutlined), label: 'KEY 管理' },
+              { key: 'acl', icon: React.createElement(icons.SafetyOutlined), label: '权限控制' },
+              { key: 'audit', icon: React.createElement(icons.FileSearchOutlined), label: '审计日志' },
+              { key: 'pipeline', icon: React.createElement(icons.FilterOutlined), label: '数据管道', disabled: true },
+              { key: 'alerts', icon: React.createElement(icons.AlertOutlined), label: '告警配置' },
+              { type: 'divider' },
+              { key: 'settings', icon: React.createElement(icons.SettingOutlined), label: '系统设置' }
+            ]
+          })
+        ),
+        React.createElement(Layout, null,
+          React.createElement(Header, { style: { background: '#fff', padding: '0 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid #f0f0f0', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' } },
+            React.createElement(Breadcrumb, { items: [{ title: 'MCP 中台' }, { title: current === 'services' ? 'MCP 服务管理' : '概览' }] }),
+            React.createElement(Space, null,
+              React.createElement(Tag, { color: 'green' }, '运行中'),
+              React.createElement(Text, { type: 'secondary' }, '管理员：平台管理员')
+            )
+          ),
+          React.createElement(Content, { style: { padding: 24 } },
+            // Stats Row
+            React.createElement(Row, { gutter: 16, style: { marginBottom: 24 } },
+              [
+                { label: 'MCP 服务总数', value: stats.total, color: '#1677ff' },
+                { label: '已上架', value: stats.active, color: '#52c41a' },
+                { label: 'UAT 服务', value: stats.uat, color: '#1677ff' },
+                { label: 'TAT 服务', value: stats.tat, color: '#722ed1' },
+                { label: '工具总数', value: stats.tools, color: '#fa8c16' }
+              ].map((s, i) => React.createElement(Col, { span: Math.floor(24/5), key: i },
+                React.createElement('div', { className: 'stat-card' },
+                  React.createElement('div', { className: 'label' }, s.label),
+                  React.createElement('div', { className: 'value', style: { color: s.color } }, s.value)
+                )
+              ))
+            ),
+            // Filter + Actions
+            React.createElement(Card, { style: { marginBottom: 16 }, bodyStyle: { padding: '12px 16px' } },
+              React.createElement(Row, { justify: 'space-between', align: 'middle' },
+                React.createElement(Col, null,
+                  React.createElement(Space, null,
+                    React.createElement(Select, { value: filterCategory, onChange: setFilterCategory, style: { width: 120 } },
+                      React.createElement(Option, { value: 'all' }, '全部类型'),
+                      React.createElement(Option, { value: 'uat' }, 'UAT 服务'),
+                      React.createElement(Option, { value: 'tat' }, 'TAT 服务')
+                    ),
+                    React.createElement(Select, { value: filterStatus, onChange: setFilterStatus, style: { width: 120 } },
+                      React.createElement(Option, { value: 'all' }, '全部状态'),
+                      React.createElement(Option, { value: 'active' }, '已上架'),
+                      React.createElement(Option, { value: 'draft' }, '草稿'),
+                      React.createElement(Option, { value: 'deprecated' }, '已下架')
+                    ),
+                    React.createElement(Text, { type: 'secondary' }, '共 ' + filtered.length + ' 个服务')
+                  )
+                ),
+                React.createElement(Col, null,
+                  React.createElement(Space, null,
+                    React.createElement(Button, { icon: React.createElement(icons.UploadOutlined), onClick: () => setImportVisible(true) }, '批量导入'),
+                    React.createElement(Button, { type: 'primary', icon: React.createElement(icons.PlusOutlined), onClick: () => setCreateVisible(true) }, '新建服务')
+                  )
+                )
+              )
+            ),
+            // Table
+            React.createElement(Card, { bodyStyle: { padding: 0 } },
+              React.createElement(Table, {
+                columns, dataSource: filtered, rowKey: 'mcp_id',
+                pagination: { pageSize: 10, showTotal: t => '共 ' + t + ' 条' },
+                scroll: { x: 1000 }
+              })
+            ),
+            // Detail Drawer
+            React.createElement(Drawer, {
+              title: selectedService?.name || '', width: 640, open: detailVisible,
+              onClose: () => setDetailVisible(false),
+              extra: React.createElement(Space, null,
+                React.createElement(Button, { onClick: () => { setEditToolVisible(true); } }, '添加工具'),
+                React.createElement(Button, { type: 'primary' }, '编辑服务')
+              )
+            },
+              selectedService && React.createElement('div', null,
+                React.createElement(Row, { gutter: [16, 16], style: { marginBottom: 24 } },
+                  React.createElement(Col, { span: 12 },
+                    React.createElement(Text, { type: 'secondary' }, 'MCP ID'),
+                    React.createElement('div', null, React.createElement(Text, { code: true }, selectedService.mcp_id))
+                  ),
+                  React.createElement(Col, { span: 12 },
+                    React.createElement(Text, { type: 'secondary' }, '类型'),
+                    React.createElement('div', null, React.createElement(Tag, { color: categoryColors[selectedService.category] }, selectedService.category.toUpperCase()))
+                  ),
+                  React.createElement(Col, { span: 12 },
+                    React.createElement(Text, { type: 'secondary' }, '状态'),
+                    React.createElement('div', null, React.createElement(Tag, { color: statusConfig[selectedService.status]?.color }, statusConfig[selectedService.status]?.text))
+                  ),
+                  React.createElement(Col, { span: 12 },
+                    React.createElement(Text, { type: 'secondary' }, '版本'),
+                    React.createElement('div', null, React.createElement(Text, { code: true }, selectedService.version))
+                  ),
+                  React.createElement(Col, { span: 24 },
+                    React.createElement(Text, { type: 'secondary' }, '描述'),
+                    React.createElement(Paragraph, null, selectedService.description)
+                  ),
+                  React.createElement(Col, { span: 24 },
+                    React.createElement(Text, { type: 'secondary' }, 'Endpoint'),
+                    React.createElement('div', null, React.createElement(Text, { copyable: true, code: true }, selectedService.endpoint))
+                  )
+                ),
+                React.createElement(Divider, null),
+                React.createElement('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 } },
+                  React.createElement(Title, { level: 5, style: { margin: 0 } }, '工具列表 (' + selectedService.tools.length + ')'),
+                  React.createElement(Button, { size: 'small', icon: React.createElement(icons.PlusOutlined), onClick: () => setEditToolVisible(true) }, '添加')
+                ),
+                renderToolCards(selectedService.tools)
+              )
+            ),
+            // Create Service Modal
+            React.createElement(Modal, {
+              title: '新建 MCP 服务', open: createVisible, width: 640,
+              onCancel: () => { setCreateVisible(false); form.resetFields(); },
+              onOk: handleCreate, okText: '创建（草稿）'
+            },
+              React.createElement(Alert, { message: '创建后状态为草稿，需管理员审核后上架', type: 'info', showIcon: true, style: { marginBottom: 16 } }),
+              React.createElement(Form, { form, layout: 'vertical' },
+                React.createElement(Row, { gutter: 16 },
+                  React.createElement(Col, { span: 12 },
+                    React.createElement(Form.Item, { name: 'mcp_id', label: 'MCP ID', rules: [{ required: true, message: '请输入' }, { pattern: /^[a-z0-9-]{3,64}$/, message: '小写字母+数字+连字符，3-64字符' }] },
+                      React.createElement(Input, { placeholder: 'feishu-xxx-shared' })
+                    )
+                  ),
+                  React.createElement(Col, { span: 12 },
+                    React.createElement(Form.Item, { name: 'name', label: '服务名称', rules: [{ required: true }] },
+                      React.createElement(Input, { placeholder: '飞书XXX（团队）' })
+                    )
+                  )
+                ),
+                React.createElement(Form.Item, { name: 'description', label: '服务描述', rules: [{ required: true }] },
+                  React.createElement(TextArea, { rows: 3, placeholder: '描述该服务的业务域和能力范围' })
+                ),
+                React.createElement(Row, { gutter: 16 },
+                  React.createElement(Col, { span: 8 },
+                    React.createElement(Form.Item, { name: 'category', label: '服务类型', rules: [{ required: true }], initialValue: 'tat' },
+                      React.createElement(Select, null,
+                        React.createElement(Option, { value: 'uat' }, 'UAT（个人）'),
+                        React.createElement(Option, { value: 'tat' }, 'TAT（共享）')
+                      )
+                    )
+                  ),
+                  React.createElement(Col, { span: 8 },
+                    React.createElement(Form.Item, { name: 'version', label: '版本号', rules: [{ required: true }], initialValue: '1.0.0' },
+                      React.createElement(Input, null)
+                    )
+                  ),
+                  React.createElement(Col, { span: 8 },
+                    React.createElement(Form.Item, { name: 'maintainer', label: '维护团队', rules: [{ required: true }] },
+                      React.createElement(Input, { placeholder: 'platform-team' })
+                    )
+                  )
+                ),
+                React.createElement(Form.Item, { name: 'endpoint', label: 'Endpoint', rules: [{ required: true, type: 'url' }] },
+                  React.createElement(Input, { placeholder: 'https://mcp.internal/feishu-xxx-shared' })
+                )
+              )
+            ),
+            // Add Tool Modal
+            React.createElement(Modal, {
+              title: '添加工具', open: editToolVisible, width: 720,
+              onCancel: () => { setEditToolVisible(false); toolForm.resetFields(); },
+              onOk: () => {
+                toolForm.validateFields().then(values => {
+                  if (selectedService) {
+                    selectedService.tools.push(values);
+                    selectedService.tools_count = selectedService.tools.length;
+                    setServices([...services]);
+                  }
+                  setEditToolVisible(false);
+                  toolForm.resetFields();
+                  message.success('工具已添加');
+                });
+              },
+              okText: '添加'
+            },
+              React.createElement(Form, { form: toolForm, layout: 'vertical' },
+                React.createElement(Row, { gutter: 16 },
+                  React.createElement(Col, { span: 12 },
+                    React.createElement(Form.Item, { name: 'name', label: '工具名', rules: [{ required: true }, { pattern: /^[a-z0-9_]{3,64}$/, message: '小写字母+数字+下划线' }] },
+                      React.createElement(Input, { placeholder: 'list_user_events' })
+                    )
+                  ),
+                  React.createElement(Col, { span: 12 },
+                    React.createElement(Form.Item, { name: 'feishu_api', label: '飞书 API 标识' },
+                      React.createElement(Input, { placeholder: 'calendar.v4.events.list' })
+                    )
+                  )
+                ),
+                React.createElement(Form.Item, { name: 'description', label: '工具描述（影响 LLM 选工具准确度）', rules: [{ required: true }] },
+                  React.createElement(TextArea, { rows: 3, placeholder: '清晰描述该工具的功能、返回内容、使用场景', showCount: true, maxLength: 200 })
+                ),
+                React.createElement(Row, { gutter: 16 },
+                  React.createElement(Col, { span: 8 },
+                    React.createElement(Form.Item, { name: 'security_level', label: '安全等级', rules: [{ required: true }], initialValue: 'filtered' },
+                      React.createElement(Select, null,
+                        React.createElement(Option, { value: 'open' }, '① 开放 open'),
+                        React.createElement(Option, { value: 'filtered' }, '③ 过滤 filtered'),
+                        React.createElement(Option, { value: 'restricted' }, '④ 受限 restricted')
+                      )
+                    )
+                  ),
+                  React.createElement(Col, { span: 8 },
+                    React.createElement(Form.Item, { name: 'operation', label: '操作类型', rules: [{ required: true }], initialValue: 'read' },
+                      React.createElement(Select, null,
+                        React.createElement(Option, { value: 'read' }, '读操作 read'),
+                        React.createElement(Option, { value: 'write' }, '写操作 write')
+                      )
+                    )
+                  ),
+                  React.createElement(Col, { span: 8 },
+                    React.createElement(Form.Item, { name: 'audit_level', label: '审计级别', rules: [{ required: true }], initialValue: 'standard' },
+                      React.createElement(Select, null,
+                        React.createElement(Option, { value: 'standard' }, '标准审计'),
+                        React.createElement(Option, { value: 'enhanced' }, '强审计')
+                      )
+                    )
+                  )
+                ),
+                React.createElement(Divider, { orientation: 'left', plain: true }, '入参定义（JSON Schema）'),
+                React.createElement(Form.Item, { name: 'input_schema_raw' },
+                  React.createElement(TextArea, { rows: 8, placeholder: '{\n  "type": "object",\n  "properties": {\n    "user_id": { "type": "string", "description": "用户ID" }\n  },\n  "required": ["user_id"]\n}', style: { fontFamily: 'SF Mono, Monaco, monospace', fontSize: 12 } })
+                )
+              )
+            ),
+            // Import Modal
+            React.createElement(Modal, {
+              title: '批量导入 MCP 服务', open: importVisible, width: 640,
+              onCancel: () => setImportVisible(false),
+              footer: [
+                React.createElement(Button, { key: 'cancel', onClick: () => setImportVisible(false) }, '取消'),
+                React.createElement(Button, { key: 'template', icon: React.createElement(icons.DownloadOutlined) }, '下载模板'),
+                React.createElement(Button, { key: 'import', type: 'primary', icon: React.createElement(icons.UploadOutlined) }, '确认导入')
+              ]
+            },
+              React.createElement('div', { className: 'import-preview', style: { marginBottom: 16 } },
+                React.createElement(icons.InboxOutlined, { style: { fontSize: 48, color: '#1677ff', marginBottom: 8 } }),
+                React.createElement('div', null,
+                  React.createElement(Text, { style: { fontSize: 16 } }, '点击或拖拽 JSON 文件到此区域')
+                ),
+                React.createElement('div', null,
+                  React.createElement(Text, { type: 'secondary' }, '支持单文件包含多个 MCP 服务定义')
+                )
+              ),
+              React.createElement(Alert, {
+                message: 'JSON 文件格式',
+                description: '{ "services": [{ "mcp_id": "...", "name": "...", "tools": [...] }, ...] }',
+                type: 'info', showIcon: true
+              })
+            )
+          )
+        )
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+  </script>
+</body>
+</html>
